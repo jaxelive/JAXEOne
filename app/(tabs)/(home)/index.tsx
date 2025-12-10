@@ -17,6 +17,7 @@ import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { HeaderRightButton, HeaderLeftButton } from "@/components/HeaderButtons";
 import { useCreatorData } from "@/hooks/useCreatorData";
+import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 
 const { width } = Dimensions.get('window');
 
@@ -24,30 +25,36 @@ export default function HomeScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
   
-  // Fetch creator data - you can pass a specific creator_handle or it will fetch the first active creator
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+  });
+  
   const { creator, loading, error, stats, refetch } = useCreatorData();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 600,
+      duration: 800,
       useNativeDriver: true,
     }).start();
   }, []);
 
   const headerScale = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [1, 0.95],
+    outputRange: [1, 0.96],
     extrapolate: 'clamp',
   });
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [1, 0.8],
+    outputRange: [1, 0.85],
     extrapolate: 'clamp',
   });
 
-  if (loading) {
+  if (loading || !fontsLoaded) {
     return (
       <>
         <Stack.Screen
@@ -59,7 +66,7 @@ export default function HomeScreen() {
         />
         <View style={[styles.container, styles.centerContent]}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading creator data...</Text>
+          <Text style={styles.loadingText}>Loading your dashboard...</Text>
         </View>
       </>
     );
@@ -80,7 +87,14 @@ export default function HomeScreen() {
             {error || 'No creator data found'}
           </Text>
           <TouchableOpacity style={styles.retryButton} onPress={refetch}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <LinearGradient
+              colors={colors.gradientPurple}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.retryButtonGradient}
+            >
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </>
@@ -123,12 +137,22 @@ export default function HomeScreen() {
             ]}
           >
             <View style={styles.profileRow}>
-              <Image
-                source={{ uri: profileImageUrl }}
-                style={styles.profilePhoto}
-              />
+              <View style={styles.profilePhotoContainer}>
+                <LinearGradient
+                  colors={colors.gradientPurple}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.profilePhotoGradient}
+                >
+                  <Image
+                    source={{ uri: profileImageUrl }}
+                    style={styles.profilePhoto}
+                  />
+                </LinearGradient>
+              </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.welcomeTitle}>Welcome, {fullName}!</Text>
+                <Text style={styles.welcomeGreeting}>Hey there! 👋</Text>
+                <Text style={styles.welcomeTitle}>{fullName}</Text>
                 <Text style={styles.welcomeSubtitle}>Lifestyle & Vibes • LIVE Creator</Text>
                 <Text style={styles.tiktokHandle}>@{creator.creator_handle}</Text>
                 <View style={styles.badgeRow}>
@@ -136,9 +160,15 @@ export default function HomeScreen() {
                     <Text style={styles.badgeText}>{region}</Text>
                   </View>
                   {creatorTypes.map((type, index) => (
-                    <View key={index} style={[styles.badge, styles.liveBadge]}>
+                    <LinearGradient
+                      key={index}
+                      colors={colors.gradientPurple}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.liveBadge}
+                    >
                       <Text style={styles.liveBadgeText}>{type}</Text>
-                    </View>
+                    </LinearGradient>
                   ))}
                 </View>
               </View>
@@ -147,167 +177,311 @@ export default function HomeScreen() {
 
           <Animated.View style={{ opacity: fadeAnim }}>
             <CardPressable onPress={() => console.log('Monthly Diamonds tapped')}>
-              <View style={[styles.card, styles.heroCard]}>
-                <View style={styles.progressRing}>
-                  <View style={styles.progressRingInner}>
-                    <Text style={styles.diamondNumber}>{stats.monthlyDiamonds}</Text>
-                  </View>
+              <LinearGradient
+                colors={['#FFFFFF', '#FAF5FF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.card, styles.heroCard]}
+              >
+                <View style={styles.heroContent}>
+                  <LinearGradient
+                    colors={colors.gradientPurple}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.progressRing}
+                  >
+                    <View style={styles.progressRingInner}>
+                      <Text style={styles.diamondNumber}>{stats.monthlyDiamonds}</Text>
+                      <Text style={styles.diamondLabel}>💎</Text>
+                    </View>
+                  </LinearGradient>
+                  <Text style={styles.cardTitle}>Monthly Diamonds</Text>
+                  <Text style={styles.cardSubtext}>Resets every 1st of the month</Text>
                 </View>
-                <Text style={styles.cardTitle}>Monthly Diamonds</Text>
-                <Text style={styles.cardSubtext}>Resets every 1st of each month</Text>
-                <Text style={styles.tapDetails}>Tap for details</Text>
-              </View>
+              </LinearGradient>
             </CardPressable>
 
             <CardPressable onPress={() => console.log('Next Graduation tapped')}>
               <View style={styles.card}>
-                <Text style={styles.cardTitleLarge}>Next Graduation: {stats.nextTarget}</Text>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardEmoji}>🎯</Text>
+                  <View style={styles.cardHeaderText}>
+                    <Text style={styles.cardTitleLarge}>Next Graduation</Text>
+                    <Text style={styles.cardSubtitle}>{stats.nextTarget} Level</Text>
+                  </View>
+                </View>
                 <View style={styles.progressBarContainer}>
                   <LinearGradient
-                    colors={[colors.primary, colors.primaryLight]}
+                    colors={colors.gradientPurple}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={[styles.progressBarFill, { width: `${Math.min(stats.currentProgress, 100)}%` }]}
                   />
                 </View>
                 <View style={styles.progressLabels}>
-                  <Text style={styles.progressLabel}>Current Progress: {stats.currentProgress}%</Text>
-                  <Text style={styles.progressLabel}>Remaining: {(stats.remaining / 1000).toFixed(0)}k</Text>
+                  <Text style={styles.progressLabel}>{stats.currentProgress}% Complete</Text>
+                  <Text style={styles.progressLabelBold}>{(stats.remaining / 1000).toFixed(0)}k to go</Text>
                 </View>
                 <View style={styles.milestoneInfo}>
-                  <Text style={styles.milestoneText}>Current: {(stats.totalDiamonds / 1000).toFixed(0)}k diamonds</Text>
-                  <Text style={styles.milestoneText}>Target: {(stats.targetAmount / 1000).toFixed(0)}k diamonds</Text>
-                  <Text style={styles.milestoneStatus}>Status: {stats.currentStatus}</Text>
+                  <View style={styles.milestoneRow}>
+                    <Text style={styles.milestoneText}>Current</Text>
+                    <Text style={styles.milestoneValue}>{(stats.totalDiamonds / 1000).toFixed(0)}k 💎</Text>
+                  </View>
+                  <View style={styles.milestoneRow}>
+                    <Text style={styles.milestoneText}>Target</Text>
+                    <Text style={styles.milestoneValue}>{(stats.targetAmount / 1000).toFixed(0)}k 💎</Text>
+                  </View>
                 </View>
               </View>
             </CardPressable>
 
             <CardPressable onPress={() => console.log('Missions tapped')}>
               <View style={styles.card}>
-                <Text style={styles.cardTitleLarge}>Missions Overview</Text>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardEmoji}>🚀</Text>
+                  <View style={styles.cardHeaderText}>
+                    <Text style={styles.cardTitleLarge}>Missions</Text>
+                    <Text style={styles.cardSubtitle}>Keep the momentum going!</Text>
+                  </View>
+                </View>
                 <View style={styles.missionsGrid}>
                   <View style={styles.missionColumn}>
-                    <Text style={styles.missionIcon}>🎓</Text>
+                    <LinearGradient
+                      colors={['#FEF3C7', '#FDE68A']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.missionIconContainer}
+                    >
+                      <Text style={styles.missionIcon}>🎓</Text>
+                    </LinearGradient>
                     <Text style={styles.missionTitle}>Education</Text>
-                    <Text style={styles.missionProgress}>2/5 trainings</Text>
-                    <Text style={styles.missionProgress}>completed</Text>
+                    <Text style={styles.missionProgress}>2 of 5</Text>
                     <View style={styles.miniProgressBar}>
-                      <View style={[styles.miniProgressFill, { width: '40%' }]} />
+                      <LinearGradient
+                        colors={colors.gradientSunset}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.miniProgressFill, { width: '40%' }]}
+                      />
                     </View>
                   </View>
                   <View style={styles.missionColumn}>
-                    <Text style={styles.missionIcon}>🔥</Text>
-                    <Text style={styles.missionTitle}>21-Day Challenge</Text>
-                    <Text style={styles.missionProgress}>7/21 completed</Text>
-                    <Text style={styles.missionProgress}>14 days to go</Text>
+                    <LinearGradient
+                      colors={['#FEE2E2', '#FECACA']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.missionIconContainer}
+                    >
+                      <Text style={styles.missionIcon}>🔥</Text>
+                    </LinearGradient>
+                    <Text style={styles.missionTitle}>Challenge</Text>
+                    <Text style={styles.missionProgress}>7 of 21</Text>
                     <View style={styles.miniProgressBar}>
-                      <View style={[styles.miniProgressFill, { width: '33%' }]} />
+                      <LinearGradient
+                        colors={colors.gradientPink}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.miniProgressFill, { width: '33%' }]}
+                      />
                     </View>
                   </View>
                   <View style={styles.missionColumn}>
-                    <Text style={styles.missionIcon}>💵</Text>
-                    <Text style={styles.missionTitle}>Bonus Forecast</Text>
+                    <LinearGradient
+                      colors={['#D1FAE5', '#A7F3D0']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.missionIconContainer}
+                    >
+                      <Text style={styles.missionIcon}>💵</Text>
+                    </LinearGradient>
+                    <Text style={styles.missionTitle}>Bonus</Text>
                     <Text style={styles.bonusAmount}>$0.00</Text>
                     <View style={styles.statusPill}>
-                      <Text style={styles.statusPillText}>Rising</Text>
+                      <Text style={styles.statusPillText}>Rising ↗</Text>
                     </View>
-                    <Text style={styles.bonusSubtext}>{stats.liveHours} hrs • {stats.monthlyDiamonds} diamonds • {stats.liveDays} day</Text>
                   </View>
+                </View>
+              </View>
+            </CardPressable>
+
+            <CardPressable onPress={() => console.log('LIVE Activity tapped')}>
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardEmoji}>📊</Text>
+                  <View style={styles.cardHeaderText}>
+                    <Text style={styles.cardTitleLarge}>Your Stats</Text>
+                    <Text style={styles.cardSubtitle}>Last 30 days</Text>
+                  </View>
+                </View>
+                <View style={styles.statsGrid}>
+                  <LinearGradient
+                    colors={['#DBEAFE', '#BFDBFE']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.statCapsule}
+                  >
+                    <Text style={styles.statValue}>{stats.liveDays}</Text>
+                    <Text style={styles.statLabel}>LIVE Days</Text>
+                  </LinearGradient>
+                  <LinearGradient
+                    colors={['#E9D5FF', '#D8B4FE']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.statCapsule}
+                  >
+                    <Text style={styles.statValue}>{stats.liveHours}</Text>
+                    <Text style={styles.statLabel}>Hours</Text>
+                  </LinearGradient>
+                  <LinearGradient
+                    colors={['#FED7AA', '#FDBA74']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.statCapsule}
+                  >
+                    <Text style={styles.statValue}>{stats.diamondsToday}</Text>
+                    <Text style={styles.statLabel}>Diamonds</Text>
+                  </LinearGradient>
+                  <LinearGradient
+                    colors={['#FEE2E2', '#FECACA']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.statCapsule}
+                  >
+                    <Text style={styles.statValue}>{stats.streak}</Text>
+                    <Text style={styles.statLabel}>Day Streak 🔥</Text>
+                  </LinearGradient>
                 </View>
               </View>
             </CardPressable>
 
             <CardPressable onPress={() => console.log('Battles tapped')}>
               <View style={styles.card}>
-                <Text style={styles.cardTitleLarge}>Upcoming Battles</Text>
-                <View style={styles.battleItem}>
-                  <View style={styles.battleInfo}>
-                    <Text style={styles.battleDate}>Dec 15 • 6:00 PM</Text>
-                    <Text style={styles.battleOpponent}>VS @sarah_live</Text>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardEmoji}>⚔️</Text>
+                  <View style={styles.cardHeaderText}>
+                    <Text style={styles.cardTitleLarge}>Upcoming Battles</Text>
+                    <Text style={styles.cardSubtitle}>Get ready to compete!</Text>
                   </View>
                 </View>
                 <View style={styles.battleItem}>
-                  <View style={styles.battleInfo}>
-                    <Text style={styles.battleDate}>Dec 18 • 8:30 PM</Text>
-                    <Text style={styles.battleOpponent}>VS @mike_streams</Text>
+                  <View style={styles.battleLeft}>
+                    <Text style={styles.battleDate}>Dec 15</Text>
+                    <Text style={styles.battleTime}>6:00 PM</Text>
+                  </View>
+                  <View style={styles.battleRight}>
+                    <Text style={styles.battleVS}>VS</Text>
+                    <Text style={styles.battleOpponent}>@sarah_live</Text>
+                  </View>
+                </View>
+                <View style={styles.battleItem}>
+                  <View style={styles.battleLeft}>
+                    <Text style={styles.battleDate}>Dec 18</Text>
+                    <Text style={styles.battleTime}>8:30 PM</Text>
+                  </View>
+                  <View style={styles.battleRight}>
+                    <Text style={styles.battleVS}>VS</Text>
+                    <Text style={styles.battleOpponent}>@mike_streams</Text>
                   </View>
                 </View>
                 <TouchableOpacity style={styles.ctaButton}>
-                  <Text style={styles.ctaButtonText}>View All Battles</Text>
+                  <LinearGradient
+                    colors={colors.gradientPurple}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.ctaButtonGradient}
+                  >
+                    <Text style={styles.ctaButtonText}>View All Battles</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </CardPressable>
 
-            <CardPressable onPress={() => console.log('LIVE Activity tapped')}>
+            <CardPressable onPress={() => console.log('Tools tapped')}>
               <View style={styles.card}>
-                <Text style={styles.cardTitleLarge}>LIVE Activity Summary</Text>
-                <View style={styles.statsGrid}>
-                  <View style={styles.statCapsule}>
-                    <Text style={styles.statValue}>{stats.liveDays}</Text>
-                    <Text style={styles.statLabel}>LIVE Days</Text>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardEmoji}>🛠️</Text>
+                  <View style={styles.cardHeaderText}>
+                    <Text style={styles.cardTitleLarge}>Creator Tools</Text>
+                    <Text style={styles.cardSubtitle}>Grow your presence</Text>
                   </View>
-                  <View style={styles.statCapsule}>
-                    <Text style={styles.statValue}>{stats.liveHours}</Text>
-                    <Text style={styles.statLabel}>LIVE Hours</Text>
-                  </View>
-                  <View style={styles.statCapsule}>
-                    <Text style={styles.statValue}>{stats.diamondsToday}</Text>
-                    <Text style={styles.statLabel}>Diamonds (30d)</Text>
-                  </View>
-                  <View style={styles.statCapsule}>
-                    <Text style={styles.statValue}>{stats.streak} Day{stats.streak !== 1 ? 's' : ''}</Text>
-                    <Text style={styles.statLabel}>Streak</Text>
-                  </View>
+                </View>
+                <View style={styles.toolsGrid}>
+                  <TouchableOpacity style={styles.toolButton}>
+                    <LinearGradient
+                      colors={['#DBEAFE', '#BFDBFE']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.toolIconContainer}
+                    >
+                      <IconSymbol 
+                        ios_icon_name="megaphone.fill" 
+                        android_material_icon_name="campaign" 
+                        size={24} 
+                        color={colors.primary} 
+                      />
+                    </LinearGradient>
+                    <Text style={styles.toolButtonText}>Promote</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.toolButton}>
+                    <LinearGradient
+                      colors={['#FED7AA', '#FDBA74']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.toolIconContainer}
+                    >
+                      <IconSymbol 
+                        ios_icon_name="flame.fill" 
+                        android_material_icon_name="whatshot" 
+                        size={24} 
+                        color={colors.warning} 
+                      />
+                    </LinearGradient>
+                    <Text style={styles.toolButtonText}>Battles</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.toolButton}>
+                    <LinearGradient
+                      colors={['#E9D5FF', '#D8B4FE']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.toolIconContainer}
+                    >
+                      <IconSymbol 
+                        ios_icon_name="wand.and.stars" 
+                        android_material_icon_name="auto-awesome" 
+                        size={24} 
+                        color={colors.primary} 
+                      />
+                    </LinearGradient>
+                    <Text style={styles.toolButtonText}>Flyer AI</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </CardPressable>
 
             <CardPressable onPress={() => console.log('Manager tapped')}>
               <View style={styles.card}>
-                <Text style={styles.cardTitleLarge}>My Manager</Text>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardEmoji}>👤</Text>
+                  <View style={styles.cardHeaderText}>
+                    <Text style={styles.cardTitleLarge}>My Manager</Text>
+                    <Text style={styles.cardSubtitle}>Get personalized support</Text>
+                  </View>
+                </View>
                 <Text style={styles.noManagerText}>
-                  {creator.assigned_manager_id ? 'Manager assigned' : 'No manager assigned'}
+                  {creator.assigned_manager_id ? 'Manager assigned' : 'No manager assigned yet'}
                 </Text>
                 {!creator.assigned_manager_id && (
                   <TouchableOpacity style={styles.requestButton}>
-                    <Text style={styles.requestButtonText}>Request Manager</Text>
+                    <LinearGradient
+                      colors={colors.gradientPurple}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.requestButtonGradient}
+                    >
+                      <Text style={styles.requestButtonText}>Request Manager</Text>
+                    </LinearGradient>
                   </TouchableOpacity>
                 )}
-              </View>
-            </CardPressable>
-
-            <CardPressable onPress={() => console.log('Tools tapped')}>
-              <View style={styles.card}>
-                <Text style={styles.cardTitleLarge}>Tools & Promote</Text>
-                <View style={styles.toolsGrid}>
-                  <TouchableOpacity style={styles.toolButton}>
-                    <IconSymbol 
-                      ios_icon_name="megaphone.fill" 
-                      android_material_icon_name="campaign" 
-                      size={28} 
-                      color={colors.primary} 
-                    />
-                    <Text style={styles.toolButtonText}>Promote Myself</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.toolButton}>
-                    <IconSymbol 
-                      ios_icon_name="flame.fill" 
-                      android_material_icon_name="whatshot" 
-                      size={28} 
-                      color={colors.primary} 
-                    />
-                    <Text style={styles.toolButtonText}>Battles</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.toolButton}>
-                    <IconSymbol 
-                      ios_icon_name="wand.and.stars" 
-                      android_material_icon_name="auto-awesome" 
-                      size={28} 
-                      color={colors.primary} 
-                    />
-                    <Text style={styles.toolButtonText}>Flyer AI</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
             </CardPressable>
           </Animated.View>
@@ -322,7 +496,7 @@ function CardPressable({ children, onPress }: { children: React.ReactNode; onPre
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.97,
+      toValue: 0.98,
       useNativeDriver: true,
     }).start();
   };
@@ -330,8 +504,8 @@ function CardPressable({ children, onPress }: { children: React.ReactNode; onPre
   const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      friction: 3,
-      tension: 40,
+      friction: 4,
+      tension: 50,
       useNativeDriver: true,
     }).start();
   };
@@ -362,185 +536,240 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+    fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
   },
   errorText: {
     fontSize: 16,
+    fontFamily: 'Poppins_500Medium',
     color: colors.error,
     textAlign: 'center',
     paddingHorizontal: 32,
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  retryButtonGradient: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
   },
   retryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingTop: 48,
-    paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingBottom: 120,
   },
   welcomeSection: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  profilePhotoContainer: {
+    marginRight: 16,
+  },
+  profilePhotoGradient: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   profilePhoto: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginRight: 16,
   },
   profileInfo: {
     flex: 1,
+    paddingTop: 4,
+  },
+  welcomeGreeting: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.textSecondary,
+    marginBottom: 2,
   },
   welcomeTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 26,
+    fontFamily: 'Poppins_700Bold',
     color: colors.text,
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   welcomeSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
     marginBottom: 6,
   },
   tiktokHandle: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
     color: colors.primary,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   badgeRow: {
     flexDirection: 'row',
     gap: 8,
+    flexWrap: 'wrap',
   },
   badge: {
     backgroundColor: colors.grey,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: 'Poppins_500Medium',
     color: colors.text,
   },
   liveBadge: {
-    backgroundColor: colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   liveBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   card: {
     backgroundColor: colors.backgroundAlt,
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 28,
+    padding: 24,
     marginBottom: 16,
-    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.06)',
-    elevation: 3,
+    boxShadow: '0px 8px 32px rgba(139, 92, 246, 0.08)',
+    elevation: 4,
   },
   heroCard: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 36,
+    marginBottom: 20,
+  },
+  heroContent: {
+    alignItems: 'center',
   },
   progressRing: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 8,
-    borderColor: colors.primary,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    padding: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   progressRingInner: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.background,
+    width: 144,
+    height: 144,
+    borderRadius: 72,
+    backgroundColor: colors.backgroundAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
   diamondNumber: {
-    fontSize: 48,
-    fontWeight: '700',
+    fontSize: 52,
+    fontFamily: 'Poppins_700Bold',
     color: colors.primary,
+    letterSpacing: -1,
+  },
+  diamondLabel: {
+    fontSize: 28,
+    marginTop: 4,
   },
   cardTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontFamily: 'Poppins_600SemiBold',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   cardSubtext: {
     fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
-    marginBottom: 12,
   },
-  tapDetails: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    position: 'absolute',
-    bottom: 16,
-    right: 20,
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  cardEmoji: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  cardHeaderText: {
+    flex: 1,
   },
   cardTitleLarge: {
     fontSize: 20,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: colors.text,
-    marginBottom: 16,
+    marginBottom: 2,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
+    color: colors.textSecondary,
   },
   progressBarContainer: {
-    height: 8,
+    height: 10,
     backgroundColor: colors.grey,
-    borderRadius: 4,
+    borderRadius: 10,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 10,
   },
   progressLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   progressLabel: {
     fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
   },
+  progressLabelBold: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.primary,
+  },
   milestoneInfo: {
-    marginTop: 8,
-    paddingTop: 12,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: colors.grey,
+    gap: 10,
+  },
+  milestoneRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   milestoneText: {
     fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
-    marginBottom: 4,
   },
-  milestoneStatus: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-    marginTop: 4,
+  milestoneValue: {
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
   },
   missionsGrid: {
     flexDirection: 'row',
@@ -551,87 +780,109 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  missionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   missionIcon: {
-    fontSize: 32,
-    marginBottom: 8,
+    fontSize: 28,
   },
   missionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
     color: colors.text,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   missionProgress: {
-    fontSize: 11,
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
     textAlign: 'center',
+    marginBottom: 8,
   },
   miniProgressBar: {
     width: '100%',
-    height: 4,
+    height: 6,
     backgroundColor: colors.grey,
-    borderRadius: 2,
-    marginTop: 8,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   miniProgressFill: {
     height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 2,
+    borderRadius: 6,
   },
   bonusAmount: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontFamily: 'Poppins_700Bold',
     color: colors.text,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   statusPill: {
     backgroundColor: colors.success,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   statusPillText: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
-  bonusSubtext: {
-    fontSize: 9,
-    color: colors.textTertiary,
-    textAlign: 'center',
-    marginTop: 4,
-  },
   battleItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.grey,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: colors.grey,
+    borderRadius: 20,
+    marginBottom: 12,
   },
-  battleInfo: {
-    flexDirection: 'column',
+  battleLeft: {
+    flex: 1,
   },
   battleDate: {
     fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  battleTime: {
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
-    marginBottom: 4,
+  },
+  battleRight: {
+    alignItems: 'flex-end',
+  },
+  battleVS: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.textTertiary,
+    marginBottom: 2,
   },
   battleOpponent: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.primary,
   },
   ctaButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  ctaButtonGradient: {
+    paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 16,
   },
   ctaButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   statsGrid: {
@@ -641,38 +892,41 @@ const styles = StyleSheet.create({
   },
   statCapsule: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: colors.background,
-    padding: 16,
-    borderRadius: 16,
+    minWidth: '46%',
+    padding: 20,
+    borderRadius: 20,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.primary,
+    fontSize: 28,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
     textAlign: 'center',
   },
   noManagerText: {
-    fontSize: 16,
+    fontSize: 15,
+    fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 16,
   },
   requestButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  requestButtonGradient: {
+    paddingVertical: 14,
     alignItems: 'center',
   },
   requestButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   toolsGrid: {
@@ -682,17 +936,20 @@ const styles = StyleSheet.create({
   },
   toolButton: {
     flex: 1,
-    backgroundColor: colors.background,
-    padding: 16,
-    borderRadius: 16,
     alignItems: 'center',
+  },
+  toolIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   toolButtonText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: colors.text,
-    marginTop: 8,
     textAlign: 'center',
   },
 });
