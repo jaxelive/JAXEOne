@@ -1,4 +1,5 @@
 
+import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Database } from './types';
 import { createClient } from '@supabase/supabase-js';
@@ -9,7 +10,7 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 console.log('[Supabase Client] Initializing with URL:', SUPABASE_URL);
 
 // Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// import { supabase } from "@/app/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -21,3 +22,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 });
 
 console.log('[Supabase Client] Client initialized successfully');
+
+// Test the connection
+supabase
+  .from('creators')
+  .select('count')
+  .limit(1)
+  .then(({ data, error }) => {
+    if (error) {
+      console.error('[Supabase Client] Connection test failed:', error);
+    } else {
+      console.log('[Supabase Client] Connection test successful');
+    }
+  });

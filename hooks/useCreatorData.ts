@@ -50,6 +50,7 @@ export function useCreatorData(creatorHandle?: string) {
       setLoading(true);
       setError(null);
 
+      // Build the query
       let query = supabase
         .from('creators')
         .select('*')
@@ -60,38 +61,47 @@ export function useCreatorData(creatorHandle?: string) {
         query = query.eq('creator_handle', creatorHandle);
       }
 
-      // Use limit(1) and get first result instead of .single()
+      // Execute the query
+      console.log('[useCreatorData] Executing query...');
       const { data, error: fetchError } = await query.limit(1);
+
+      console.log('[useCreatorData] Query completed', {
+        hasData: !!data,
+        dataLength: data?.length,
+        hasError: !!fetchError,
+        errorMessage: fetchError?.message
+      });
 
       if (fetchError) {
         console.error('[useCreatorData] Fetch error:', fetchError);
         setError(fetchError.message);
+        setCreator(null);
         setLoading(false);
         return;
       }
-
-      console.log('[useCreatorData] Query result:', { 
-        dataLength: data?.length, 
-        hasData: !!data && data.length > 0 
-      });
 
       if (data && data.length > 0) {
         const creatorData = data[0] as CreatorData;
         console.log('[useCreatorData] Creator data loaded:', {
           handle: creatorData.creator_handle,
           name: `${creatorData.first_name} ${creatorData.last_name}`,
-          diamonds: creatorData.total_diamonds
+          diamonds: creatorData.total_diamonds,
+          monthlyDiamonds: creatorData.diamonds_monthly
         });
         setCreator(creatorData);
+        setError(null);
       } else {
         console.warn('[useCreatorData] No creator data found');
         setError('No creator data found');
+        setCreator(null);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[useCreatorData] Unexpected error:', err);
-      setError('Failed to fetch creator data');
+      setError(err?.message || 'Failed to fetch creator data');
+      setCreator(null);
     } finally {
       setLoading(false);
+      console.log('[useCreatorData] Fetch complete');
     }
   }, [creatorHandle]);
 
@@ -101,7 +111,10 @@ export function useCreatorData(creatorHandle?: string) {
   }, [fetchCreatorData]);
 
   const getCreatorStats = (): CreatorStats | null => {
-    if (!creator) return null;
+    if (!creator) {
+      console.log('[useCreatorData] getCreatorStats: No creator data available');
+      return null;
+    }
 
     const liveHours = Math.floor(creator.live_duration_seconds_30d / 3600);
     const silverTarget = creator.silver_target || 200000;
@@ -120,7 +133,7 @@ export function useCreatorData(creatorHandle?: string) {
       ? ((creator.total_diamonds / targetAmount) * 100).toFixed(1)
       : '0.0';
 
-    return {
+    const stats = {
       monthlyDiamonds: creator.diamonds_monthly || 0,
       totalDiamonds: creator.total_diamonds || 0,
       liveDays: creator.live_days_30d || 0,
@@ -133,6 +146,9 @@ export function useCreatorData(creatorHandle?: string) {
       targetAmount: targetAmount,
       currentStatus: creator.graduation_status || 'Rookie (New)',
     };
+
+    console.log('[useCreatorData] Stats calculated:', stats);
+    return stats;
   };
 
   return {

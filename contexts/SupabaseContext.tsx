@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User, AuthError } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured } from '@/utils/supabase';
+import { supabase } from '@/app/integrations/supabase/client';
 
 interface SupabaseContextType {
   session: Session | null;
@@ -20,18 +20,14 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const configured = isSupabaseConfigured();
+  const configured = true; // Always configured since we have hardcoded credentials
 
   useEffect(() => {
-    if (!configured) {
-      console.log('Supabase is not configured. Please add your credentials to .env');
-      setLoading(false);
-      return;
-    }
-
+    console.log('[SupabaseContext] Initializing...');
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session ? 'Found' : 'Not found');
+      console.log('[SupabaseContext] Initial session:', session ? 'Found' : 'Not found');
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -41,85 +37,72 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', _event, session ? 'Session active' : 'No session');
+      console.log('[SupabaseContext] Auth state changed:', _event, session ? 'Session active' : 'No session');
       setSession(session);
       setUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
-  }, [configured]);
+  }, []);
 
   const signUp = async (email: string, password: string) => {
-    if (!configured) {
-      return { error: { message: 'Supabase is not configured' } as AuthError };
-    }
-    
-    console.log('Signing up user:', email);
+    console.log('[SupabaseContext] Signing up user:', email);
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: 'https://natively.dev/email-confirmed'
+      }
     });
     
     if (error) {
-      console.error('Sign up error:', error.message);
+      console.error('[SupabaseContext] Sign up error:', error.message);
     } else {
-      console.log('Sign up successful');
+      console.log('[SupabaseContext] Sign up successful');
     }
     
     return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    if (!configured) {
-      return { error: { message: 'Supabase is not configured' } as AuthError };
-    }
-    
-    console.log('Signing in user:', email);
+    console.log('[SupabaseContext] Signing in user:', email);
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
     if (error) {
-      console.error('Sign in error:', error.message);
+      console.error('[SupabaseContext] Sign in error:', error.message);
     } else {
-      console.log('Sign in successful');
+      console.log('[SupabaseContext] Sign in successful');
     }
     
     return { error };
   };
 
   const signInWithOtp = async (email: string) => {
-    if (!configured) {
-      return { error: { message: 'Supabase is not configured' } as AuthError };
-    }
-    
-    console.log('Sending OTP to:', email);
+    console.log('[SupabaseContext] Sending OTP to:', email);
     const { error } = await supabase.auth.signInWithOtp({
       email,
     });
     
     if (error) {
-      console.error('OTP error:', error.message);
+      console.error('[SupabaseContext] OTP error:', error.message);
     } else {
-      console.log('OTP sent successfully');
+      console.log('[SupabaseContext] OTP sent successfully');
     }
     
     return { error };
   };
 
   const signOut = async () => {
-    if (!configured) {
-      return { error: { message: 'Supabase is not configured' } as AuthError };
-    }
-    
-    console.log('Signing out user');
+    console.log('[SupabaseContext] Signing out user');
     const { error } = await supabase.auth.signOut();
     
     if (error) {
-      console.error('Sign out error:', error.message);
+      console.error('[SupabaseContext] Sign out error:', error.message);
     } else {
-      console.log('Sign out successful');
+      console.log('[SupabaseContext] Sign out successful');
     }
     
     return { error };
