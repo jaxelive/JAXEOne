@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
+import { colors } from '@/styles/commonStyles';
 
 export default function TabLayout() {
   return (
@@ -7,6 +9,18 @@ export default function TabLayout() {
       <NativeTabs.Trigger key="home" name="(home)">
         <Icon sf="house.fill" />
         <Label>Home</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger key="missions" name="missions">
+        <Icon sf="list.bullet.clipboard.fill" />
+        <Label>Missions</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger key="live" name="live">
+        <Icon sf="video.fill" />
+        <Label>LIVE</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger key="rewards" name="rewards">
+        <Icon sf="gift.fill" />
+        <Label>Rewards</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger key="profile" name="profile">
         <Icon sf="person.fill" />

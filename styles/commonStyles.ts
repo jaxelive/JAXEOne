@@ -1,14 +1,23 @@
+
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const colors = {
-  primary: '#162456',    // Material Blue
-  secondary: '#193cb8',  // Darker Blue
-  accent: '#64B5F6',     // Light Blue
-  background: '#101824',  // Keeping dark background
-  backgroundAlt: '#162133',  // Keeping dark background
-  text: '#e3e3e3',       // Keeping light text
-  grey: '#90CAF9',       // Light Blue Grey
-  card: '#193cb8',       // Keeping dark card background
+  primary: '#623CEA',        // JAXE Purple
+  primaryLight: '#A85CF9',   // Light Purple for gradients
+  secondary: '#8B5CF6',      // Medium Purple
+  accent: '#C084FC',         // Accent Purple
+  background: '#F7F7FA',     // Soft light background
+  backgroundAlt: '#FFFFFF',  // White for cards
+  text: '#222222',           // Dark text
+  textSecondary: '#666666',  // Secondary text
+  textTertiary: '#999999',   // Tertiary text
+  grey: '#E5E5EA',           // Light grey
+  greyDark: '#8E8E93',       // Dark grey
+  card: '#FFFFFF',           // White card background
+  success: '#34C759',        // Green
+  warning: '#FF9500',        // Orange
+  error: '#FF3B30',          // Red
+  border: '#E5E5EA',         // Border color
 };
 
 export const buttonStyles = StyleSheet.create({
@@ -72,18 +81,18 @@ export const commonStyles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.backgroundAlt,
-    borderColor: colors.grey,
+    borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 16,
+    padding: 16,
     marginVertical: 8,
     width: '100%',
-    boxShadow: '0px 2px 3px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
     elevation: 2,
   },
   icon: {
     width: 60,
     height: 60,
-    tintColor: "white",
+    tintColor: colors.primary,
   },
 });
