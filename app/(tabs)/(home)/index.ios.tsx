@@ -10,17 +10,22 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { HeaderRightButton, HeaderLeftButton } from "@/components/HeaderButtons";
+import { useCreatorData } from "@/hooks/useCreatorData";
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
+  
+  // Fetch creator data - you can pass a specific creator_handle or it will fetch the first active creator
+  const { creator, loading, error, stats, refetch } = useCreatorData();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -41,6 +46,53 @@ export default function HomeScreen() {
     outputRange: [1, 0.8],
     extrapolate: 'clamp',
   });
+
+  if (loading) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: "JAXE Creator",
+            headerRight: () => <HeaderRightButton />,
+            headerLeft: () => <HeaderLeftButton />,
+            headerLargeTitle: false,
+          }}
+        />
+        <View style={[styles.container, styles.centerContent]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading creator data...</Text>
+        </View>
+      </>
+    );
+  }
+
+  if (error || !creator || !stats) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: "JAXE Creator",
+            headerRight: () => <HeaderRightButton />,
+            headerLeft: () => <HeaderLeftButton />,
+            headerLargeTitle: false,
+          }}
+        />
+        <View style={[styles.container, styles.centerContent]}>
+          <Text style={styles.errorText}>
+            {error || 'No creator data found'}
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    );
+  }
+
+  const fullName = `${creator.first_name} ${creator.last_name}`.trim() || creator.creator_handle;
+  const profileImageUrl = creator.avatar_url || creator.profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop';
+  const creatorTypes = creator.creator_type || ['LIVE'];
+  const region = creator.region || 'USA / Canada';
 
   return (
     <>
@@ -75,20 +127,22 @@ export default function HomeScreen() {
           >
             <View style={styles.profileRow}>
               <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop' }}
+                source={{ uri: profileImageUrl }}
                 style={styles.profilePhoto}
               />
               <View style={styles.profileInfo}>
-                <Text style={styles.welcomeTitle}>Welcome, Camilo Cossio!</Text>
+                <Text style={styles.welcomeTitle}>Welcome, {fullName}!</Text>
                 <Text style={styles.welcomeSubtitle}>Lifestyle & Vibes • LIVE Creator</Text>
-                <Text style={styles.tiktokHandle}>@camilocossio</Text>
+                <Text style={styles.tiktokHandle}>@{creator.creator_handle}</Text>
                 <View style={styles.badgeRow}>
                   <View style={styles.badge}>
-                    <Text style={styles.badgeText}>USA / Canada</Text>
+                    <Text style={styles.badgeText}>{region}</Text>
                   </View>
-                  <View style={[styles.badge, styles.liveBadge]}>
-                    <Text style={styles.liveBadgeText}>LIVE</Text>
-                  </View>
+                  {creatorTypes.map((type, index) => (
+                    <View key={index} style={[styles.badge, styles.liveBadge]}>
+                      <Text style={styles.liveBadgeText}>{type}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
             </View>
@@ -99,7 +153,7 @@ export default function HomeScreen() {
               <View style={[styles.card, styles.heroCard]}>
                 <View style={styles.progressRing}>
                   <View style={styles.progressRingInner}>
-                    <Text style={styles.diamondNumber}>54</Text>
+                    <Text style={styles.diamondNumber}>{stats.monthlyDiamonds}</Text>
                   </View>
                 </View>
                 <Text style={styles.cardTitle}>Monthly Diamonds</Text>
@@ -110,23 +164,23 @@ export default function HomeScreen() {
 
             <CardPressable onPress={() => console.log('Next Graduation tapped')}>
               <View style={styles.card}>
-                <Text style={styles.cardTitleLarge}>Next Graduation: Silver</Text>
+                <Text style={styles.cardTitleLarge}>Next Graduation: {stats.nextTarget}</Text>
                 <View style={styles.progressBarContainer}>
                   <LinearGradient
                     colors={[colors.primary, colors.primaryLight]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={styles.progressBarFill}
+                    style={[styles.progressBarFill, { width: `${Math.min(stats.currentProgress, 100)}%` }]}
                   />
                 </View>
                 <View style={styles.progressLabels}>
-                  <Text style={styles.progressLabel}>Current Progress: 0.0%</Text>
-                  <Text style={styles.progressLabel}>Remaining: 80k</Text>
+                  <Text style={styles.progressLabel}>Current Progress: {stats.currentProgress}%</Text>
+                  <Text style={styles.progressLabel}>Remaining: {(stats.remaining / 1000).toFixed(0)}k</Text>
                 </View>
                 <View style={styles.milestoneInfo}>
-                  <Text style={styles.milestoneText}>Current: 120k diamonds</Text>
-                  <Text style={styles.milestoneText}>Target: 200k diamonds</Text>
-                  <Text style={styles.milestoneStatus}>Status: Rookie (New)</Text>
+                  <Text style={styles.milestoneText}>Current: {(stats.totalDiamonds / 1000).toFixed(0)}k diamonds</Text>
+                  <Text style={styles.milestoneText}>Target: {(stats.targetAmount / 1000).toFixed(0)}k diamonds</Text>
+                  <Text style={styles.milestoneStatus}>Status: {stats.currentStatus}</Text>
                 </View>
               </View>
             </CardPressable>
@@ -160,7 +214,7 @@ export default function HomeScreen() {
                     <View style={styles.statusPill}>
                       <Text style={styles.statusPillText}>Rising</Text>
                     </View>
-                    <Text style={styles.bonusSubtext}>5 hrs • 54 diamonds • 1 day</Text>
+                    <Text style={styles.bonusSubtext}>{stats.liveHours} hrs • {stats.monthlyDiamonds} diamonds • {stats.liveDays} day</Text>
                   </View>
                 </View>
               </View>
@@ -192,19 +246,19 @@ export default function HomeScreen() {
                 <Text style={styles.cardTitleLarge}>LIVE Activity Summary</Text>
                 <View style={styles.statsGrid}>
                   <View style={styles.statCapsule}>
-                    <Text style={styles.statValue}>1</Text>
+                    <Text style={styles.statValue}>{stats.liveDays}</Text>
                     <Text style={styles.statLabel}>LIVE Days</Text>
                   </View>
                   <View style={styles.statCapsule}>
-                    <Text style={styles.statValue}>5</Text>
+                    <Text style={styles.statValue}>{stats.liveHours}</Text>
                     <Text style={styles.statLabel}>LIVE Hours</Text>
                   </View>
                   <View style={styles.statCapsule}>
-                    <Text style={styles.statValue}>54</Text>
-                    <Text style={styles.statLabel}>Diamonds Today</Text>
+                    <Text style={styles.statValue}>{stats.diamondsToday}</Text>
+                    <Text style={styles.statLabel}>Diamonds (30d)</Text>
                   </View>
                   <View style={styles.statCapsule}>
-                    <Text style={styles.statValue}>1 Day</Text>
+                    <Text style={styles.statValue}>{stats.streak} Day{stats.streak !== 1 ? 's' : ''}</Text>
                     <Text style={styles.statLabel}>Streak</Text>
                   </View>
                 </View>
@@ -214,10 +268,14 @@ export default function HomeScreen() {
             <CardPressable onPress={() => console.log('Manager tapped')}>
               <View style={styles.card}>
                 <Text style={styles.cardTitleLarge}>My Manager</Text>
-                <Text style={styles.noManagerText}>No manager assigned</Text>
-                <TouchableOpacity style={styles.requestButton}>
-                  <Text style={styles.requestButtonText}>Request Manager</Text>
-                </TouchableOpacity>
+                <Text style={styles.noManagerText}>
+                  {creator.assigned_manager_id ? 'Manager assigned' : 'No manager assigned'}
+                </Text>
+                {!creator.assigned_manager_id && (
+                  <TouchableOpacity style={styles.requestButton}>
+                    <Text style={styles.requestButtonText}>Request Manager</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </CardPressable>
 
@@ -299,6 +357,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.error,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -432,7 +517,6 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    width: '0%',
     borderRadius: 4,
   },
   progressLabels: {
