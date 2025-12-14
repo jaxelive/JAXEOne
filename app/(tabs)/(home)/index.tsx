@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
 import { 
   ScrollView, 
@@ -18,6 +18,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { HeaderRightButton, HeaderLeftButton } from "@/components/HeaderButtons";
 import { useCreatorData } from "@/hooks/useCreatorData";
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { supabase } from "@/app/integrations/supabase/client";
 
 const { width } = Dimensions.get('window');
 
@@ -32,6 +33,9 @@ export default function HomeScreen() {
   });
   
   const { creator, loading, error, stats, refetch } = useCreatorData();
+  const [nextBattle, setNextBattle] = useState<any>(null);
+  const [challengeProgress, setChallengeProgress] = useState(0);
+  const [educationProgress, setEducationProgress] = useState(0);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -40,6 +44,63 @@ export default function HomeScreen() {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  useEffect(() => {
+    if (creator) {
+      fetchBattleData();
+      fetchLearningData();
+    }
+  }, [creator]);
+
+  const fetchBattleData = async () => {
+    if (!creator) return;
+
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('battles_calendar')
+        .select('*')
+        .or(`creator_1_id.eq.${creator.id},creator_2_id.eq.${creator.id}`)
+        .gte('battle_date', now)
+        .order('battle_date', { ascending: true })
+        .limit(1);
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setNextBattle(data[0]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching battle data:', error);
+    }
+  };
+
+  const fetchLearningData = async () => {
+    if (!creator) return;
+
+    try {
+      // Fetch 21-day challenge progress
+      const { data: challengeData, error: challengeError } = await supabase
+        .from('learning_challenge_progress')
+        .select('*')
+        .eq('creator_id', creator.id)
+        .eq('is_completed', true);
+
+      if (challengeError) throw challengeError;
+      setChallengeProgress(challengeData?.length || 0);
+
+      // Fetch UR education progress
+      const { data: educationData, error: educationError } = await supabase
+        .from('ur_education_progress')
+        .select('*')
+        .eq('creator_id', creator.id)
+        .eq('quiz_passed', true);
+
+      if (educationError) throw educationError;
+      setEducationProgress(educationData?.length || 0);
+    } catch (error: any) {
+      console.error('Error fetching learning data:', error);
+    }
+  };
 
   if (loading || !fontsLoaded) {
     return (
@@ -90,6 +151,19 @@ export default function HomeScreen() {
   const profileImageUrl = creator.avatar_url || creator.profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop';
   const region = creator.region || 'USA / Canada';
   const language = creator.language || 'English';
+
+  const formatBattleDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const formatBattleTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
 
   return (
     <>
@@ -236,22 +310,35 @@ export default function HomeScreen() {
                     <Text style={styles.cardSubtitle}>Monthly battles</Text>
                   </View>
                 </View>
-                <Text style={styles.battleStatus}>Your monthly battle is not scheduled</Text>
-                <TouchableOpacity style={styles.scheduleButton}>
-                  <LinearGradient
-                    colors={colors.gradientPurple}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.scheduleButtonGradient}
-                  >
-                    <Text style={styles.scheduleButtonText}>Schedule Battle</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                {nextBattle ? (
+                  <>
+                    <Text style={styles.battleScheduled}>
+                      Next battle: {formatBattleDate(nextBattle.battle_date)} at {formatBattleTime(nextBattle.battle_time)}
+                    </Text>
+                    <Text style={styles.battleOpponent}>
+                      vs @{nextBattle.creator_1_id === creator.id ? nextBattle.creator_2_handle : nextBattle.creator_1_handle}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.battleStatus}>Your monthly battle is not scheduled</Text>
+                    <TouchableOpacity style={styles.scheduleButton}>
+                      <LinearGradient
+                        colors={colors.gradientPurple}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.scheduleButtonGradient}
+                      >
+                        <Text style={styles.scheduleButtonText}>Schedule Battle</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             </CardPressable>
 
             {/* LEARNING HUB CARD */}
-            <CardPressable onPress={() => console.log('Learning Hub tapped')}>
+            <CardPressable onPress={() => router.push('/(tabs)/learning-hub')}>
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardEmoji}>📚</Text>
@@ -263,16 +350,16 @@ export default function HomeScreen() {
                 <View style={styles.learningRow}>
                   <View style={styles.learningItem}>
                     <Text style={styles.learningTitle}>21-Day Challenge</Text>
-                    <Text style={styles.learningProgress}>0/21</Text>
+                    <Text style={styles.learningProgress}>{challengeProgress}/21</Text>
                     <View style={styles.miniProgressBar}>
-                      <View style={[styles.miniProgressFill, { width: '0%' }]} />
+                      <View style={[styles.miniProgressFill, { width: `${(challengeProgress / 21) * 100}%` }]} />
                     </View>
                   </View>
                   <View style={styles.learningItem}>
                     <Text style={styles.learningTitle}>UR Education</Text>
-                    <Text style={styles.learningProgress}>0/5</Text>
+                    <Text style={styles.learningProgress}>{educationProgress}/5</Text>
                     <View style={styles.miniProgressBar}>
-                      <View style={[styles.miniProgressFill, { width: '0%' }]} />
+                      <View style={[styles.miniProgressFill, { width: `${(educationProgress / 5) * 100}%` }]} />
                     </View>
                   </View>
                 </View>
@@ -535,6 +622,19 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 16,
+  },
+  battleScheduled: {
+    fontSize: 16,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  battleOpponent: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.primary,
+    textAlign: 'center',
   },
   scheduleButton: {
     borderRadius: 16,

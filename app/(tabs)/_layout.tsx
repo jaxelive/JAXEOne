@@ -30,10 +30,10 @@ export default function TabLayout() {
       label: 'AI Flyers',
     },
     {
-      name: 'shop',
-      route: '/(tabs)/shop',
-      icon: 'shopping-bag',
-      label: 'Shop',
+      name: 'learning-hub',
+      route: '/(tabs)/learning-hub',
+      icon: 'school',
+      label: 'Learning',
     },
     {
       name: 'profile',
@@ -55,6 +55,7 @@ export default function TabLayout() {
         <Stack.Screen key="bonuses" name="bonuses" />
         <Stack.Screen key="battles" name="battles" />
         <Stack.Screen key="ai-flyers" name="ai-flyers" />
+        <Stack.Screen key="learning-hub" name="learning-hub" />
         <Stack.Screen key="shop" name="shop" />
         <Stack.Screen key="profile" name="profile" />
       </Stack>
