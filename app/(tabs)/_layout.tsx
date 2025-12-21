@@ -8,19 +8,19 @@ export default function TabLayout() {
     {
       name: '(home)',
       route: '/(tabs)/(home)/',
-      icon: 'house.fill',
+      icon: 'home',
       label: 'Home',
     },
     {
       name: 'missions',
       route: '/(tabs)/missions',
-      icon: 'square.grid.3x3.fill',
+      icon: 'apps',
       label: 'Tools',
     },
     {
       name: 'profile',
       route: '/(tabs)/profile',
-      icon: 'gearshape.fill',
+      icon: 'settings',
       label: 'Settings',
     },
   ];

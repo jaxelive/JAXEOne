@@ -2,8 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { Stack } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Video, ResizeMode } from 'expo-video';
 import { colors } from '@/styles/commonStyles';
 import { supabase } from '@/app/integrations/supabase/client';
 import { useCreatorData } from '@/hooks/useCreatorData';
@@ -357,7 +355,7 @@ export default function LearningHubScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Learning Hub',
+          title: 'Academy',
           headerShown: true,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
@@ -365,16 +363,16 @@ export default function LearningHubScreen() {
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Header */}
-        <LinearGradient
-          colors={['#FFFFFF', '#DBEAFE']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerCard}
-        >
-          <Text style={styles.emoji}>🎓</Text>
-          <Text style={styles.headerTitle}>Learning Hub</Text>
+        <View style={styles.headerCard}>
+          <IconSymbol
+            ios_icon_name="book.fill"
+            android_material_icon_name="menu-book"
+            size={64}
+            color={colors.primary}
+          />
+          <Text style={styles.headerTitle}>Academy</Text>
           <Text style={styles.headerSubtitle}>Master your creator journey</Text>
-        </LinearGradient>
+        </View>
 
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
@@ -394,7 +392,7 @@ export default function LearningHubScreen() {
             onPress={() => setActiveTab('education')}
           >
             <Text style={[styles.tabText, activeTab === 'education' && styles.activeTabText]}>
-              UR Education
+              Academy Videos
             </Text>
             <Text style={[styles.tabBadge, activeTab === 'education' && styles.activeTabBadge]}>
               {completedVideos}/5
@@ -467,7 +465,7 @@ export default function LearningHubScreen() {
           </View>
         )}
 
-        {/* UR Education */}
+        {/* Academy Videos */}
         {activeTab === 'education' && (
           <View style={styles.section}>
             <View style={styles.progressHeader}>
@@ -745,20 +743,18 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   headerCard: {
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 28,
     padding: 32,
     alignItems: 'center',
     marginBottom: 20,
-  },
-  emoji: {
-    fontSize: 64,
-    marginBottom: 12,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
+    marginTop: 16,
     marginBottom: 8,
   },
   headerSubtitle: {

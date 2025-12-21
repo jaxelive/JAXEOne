@@ -181,7 +181,7 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
     );
   }
 
-  // Diamonds card
+  // Diamonds card - NUMBER MOVED TO TOP-LEFT, NO EMOJI
   const progressPercentage = ((data.diamondsEarned || 0) / (data.totalGoal || 200000)) * 100;
 
   return (
@@ -192,21 +192,16 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
       onPress={onPress}
     >
       <Animated.View style={[styles.card, cardStyle]}>
-        {/* Header */}
+        {/* Header with Diamonds Number at Top-Left */}
         <View style={styles.diamondsHeader}>
-          <View style={styles.diamondIcon}>
-            <Text style={styles.diamondEmoji}>💎</Text>
+          <View style={styles.diamondsTopLeft}>
+            <Text style={styles.diamondsNumberTopLeft}>{(data.diamondsEarned || 15000).toLocaleString()}</Text>
+            <Text style={styles.diamondsLabelSmall}>Diamonds</Text>
           </View>
           <View style={styles.tierBadge}>
             <View style={styles.tierDot} />
             <Text style={styles.tierText}>{data.nextTier || 'Silver'}</Text>
           </View>
-        </View>
-
-        {/* Main Amount */}
-        <View style={styles.mainAmountSection}>
-          <Text style={styles.mainAmount}>{(data.diamondsEarned || 15000).toLocaleString()}</Text>
-          <Text style={styles.diamondsLabel}>Diamonds Earned</Text>
         </View>
 
         {/* Progress Section */}
@@ -256,7 +251,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     width: '100%',
-    minHeight: 420,
+    minHeight: 380,
   },
 
   // Bonus Card Styles
@@ -400,23 +395,27 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 
-  // Diamonds Card Styles
+  // Diamonds Card Styles - NUMBER AT TOP-LEFT
   diamondsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+    alignItems: 'flex-start',
+    marginBottom: 32,
   },
-  diamondIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  diamondsTopLeft: {
+    flex: 1,
   },
-  diamondEmoji: {
-    fontSize: 24,
+  diamondsNumberTopLeft: {
+    fontSize: 56,
+    fontFamily: 'Poppins_800ExtraBold',
+    color: '#FFFFFF',
+    letterSpacing: -2,
+    marginBottom: 4,
+  },
+  diamondsLabelSmall: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   tierBadge: {
     flexDirection: 'row',
@@ -437,11 +436,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
-  },
-  diamondsLabel: {
-    fontSize: 16,
-    fontFamily: 'Poppins_500Medium',
-    color: 'rgba(255, 255, 255, 0.9)',
   },
   progressSection: {
     marginBottom: 24,

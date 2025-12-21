@@ -1,11 +1,10 @@
 
-import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 import { usePathname, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from './IconSymbol';
 import { colors } from '@/styles/commonStyles';
-import { BlurView } from 'expo-blur';
 
 export interface TabBarItem {
   name: string;
@@ -21,6 +20,7 @@ interface FloatingTabBarProps {
 export default function FloatingTabBar({ tabs }: FloatingTabBarProps) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   const isActive = (route: string) => {
     if (route === '/(tabs)/(home)/') {
@@ -31,17 +31,33 @@ export default function FloatingTabBar({ tabs }: FloatingTabBarProps) {
 
   const activeIndex = tabs.findIndex(tab => isActive(tab.route));
 
+  useEffect(() => {
+    if (activeIndex >= 0) {
+      Animated.spring(slideAnim, {
+        toValue: activeIndex,
+        useNativeDriver: false,
+        friction: 8,
+        tension: 50,
+      }).start();
+    }
+  }, [activeIndex]);
+
+  const indicatorLeft = slideAnim.interpolate({
+    inputRange: tabs.map((_, i) => i),
+    outputRange: tabs.map((_, i) => `${(i / tabs.length) * 100}%`),
+  });
+
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom + 8 }]}>
       <View style={styles.tabBarContainer}>
         <View style={styles.tabBar}>
           {/* Sliding Background Indicator */}
           {activeIndex >= 0 && (
-            <View
+            <Animated.View
               style={[
                 styles.activeIndicator,
                 {
-                  left: `${(activeIndex / tabs.length) * 100}%`,
+                  left: indicatorLeft,
                   width: `${100 / tabs.length}%`,
                 },
               ]}
@@ -62,7 +78,7 @@ export default function FloatingTabBar({ tabs }: FloatingTabBarProps) {
                   ios_icon_name={tab.icon}
                   android_material_icon_name={tab.icon}
                   size={24}
-                  color={active ? '#6642EF' : colors.text}
+                  color={active ? '#FFFFFF' : colors.text}
                 />
                 <Text
                   style={[
@@ -107,13 +123,11 @@ const styles = StyleSheet.create({
   },
   activeIndicator: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
+    top: 4,
+    bottom: 4,
     backgroundColor: '#6642EF',
     borderRadius: 24,
-    marginVertical: 4,
     marginHorizontal: 4,
-    opacity: 0.15,
   },
   tab: {
     flex: 1,
@@ -129,6 +143,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   labelActive: {
-    color: '#6642EF',
+    color: '#FFFFFF',
   },
 });

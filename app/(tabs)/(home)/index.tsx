@@ -205,14 +205,18 @@ export default function HomeScreen() {
                   <View style={styles.headerNameRow}>
                     <Text style={styles.headerGreeting}>Welcome back, </Text>
                     <Text style={styles.headerName}>{firstName}</Text>
-                    <Text style={styles.goldCheckmark}> ⭐</Text>
+                    <View style={styles.goldCheckmark}>
+                      <IconSymbol 
+                        ios_icon_name="checkmark.seal.fill" 
+                        android_material_icon_name="verified" 
+                        size={24} 
+                        color="#FFD700" 
+                      />
+                    </View>
                   </View>
                   <View style={styles.headerBadges}>
                     <View style={styles.headerBadge}>
                       <Text style={styles.headerBadgeText}>Live / Shop</Text>
-                    </View>
-                    <View style={styles.headerBadge}>
-                      <Text style={styles.headerBadgeText}>{creatorType}</Text>
                     </View>
                   </View>
                   <View style={styles.headerRegions}>
@@ -231,9 +235,9 @@ export default function HomeScreen() {
               >
                 <IconSymbol 
                   ios_icon_name="message.fill" 
-                  android_material_icon_name="chat-bubble" 
-                  size={24} 
-                  color="#FFFFFF" 
+                  android_material_icon_name="chat" 
+                  size={26} 
+                  color="#6642EF" 
                 />
               </TouchableOpacity>
             </View>
@@ -271,8 +275,11 @@ export default function HomeScreen() {
               </View>
             </View>
 
+            {/* Extra spacing before 21-Day Challenge */}
+            <View style={{ height: 24 }} />
+
             {/* 21-DAY CHALLENGE CARD */}
-            <CardPressable onPress={() => router.push('/(tabs)/missions')}>
+            <CardPressable onPress={() => router.push('/(tabs)/learning-hub')}>
               <View style={styles.darkCard}>
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.cardHeaderLeft}>
@@ -326,7 +333,7 @@ export default function HomeScreen() {
                     ios_icon_name="arrow.right" 
                     android_material_icon_name="arrow-forward" 
                     size={18} 
-                    color="#1A1A1A" 
+                    color="#FFFFFF" 
                   />
                 </TouchableOpacity>
               </View>
@@ -338,8 +345,8 @@ export default function HomeScreen() {
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.cardHeaderLeft}>
                     <IconSymbol 
-                      ios_icon_name="graduationcap.fill" 
-                      android_material_icon_name="school" 
+                      ios_icon_name="book.fill" 
+                      android_material_icon_name="menu-book" 
                       size={24} 
                       color="#FFFFFF" 
                     />
@@ -353,10 +360,10 @@ export default function HomeScreen() {
                 <View style={styles.academyContent}>
                   <View style={styles.academyLeft}>
                     <Text style={styles.academyProgressLabel}>Video Progress</Text>
-                    <Text style={styles.academyProgressValue}>{educationProgress}/12</Text>
+                    <Text style={styles.academyProgressValue}>{educationProgress}/5</Text>
                     
                     <View style={styles.academyProgressBar}>
-                      <View style={[styles.academyProgressFill, { width: `${(educationProgress / 12) * 100}%` }]} />
+                      <View style={[styles.academyProgressFill, { width: `${(educationProgress / 5) * 100}%` }]} />
                     </View>
 
                     <View style={styles.quizStatus}>
@@ -390,7 +397,7 @@ export default function HomeScreen() {
               </View>
             </CardPressable>
 
-            {/* ASSIGNED MANAGER CARD */}
+            {/* MANAGER CARD - TEMPORARY DATA */}
             <CardPressable onPress={() => router.push('/(tabs)/manager-details')}>
               <View style={styles.darkCard}>
                 <View style={styles.managerContent}>
@@ -403,7 +410,8 @@ export default function HomeScreen() {
                   </View>
                   <View style={styles.managerInfo}>
                     <Text style={styles.managerLabel}>ASSIGNED MANAGER</Text>
-                    <Text style={styles.managerName}>Michael Chen</Text>
+                    <Text style={styles.managerName}>Ivan Martinez</Text>
+                    <Text style={styles.managerRole}>Creator Manager</Text>
                   </View>
                   <TouchableOpacity style={styles.viewManagerButton} onPress={() => router.push('/(tabs)/manager-details')}>
                     <IconSymbol 
@@ -517,7 +525,7 @@ export default function HomeScreen() {
                     ios_icon_name="arrow.right" 
                     android_material_icon_name="arrow-forward" 
                     size={18} 
-                    color="#1A1A1A" 
+                    color="#FFFFFF" 
                   />
                 </TouchableOpacity>
               </View>
@@ -618,16 +626,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 32,
-    paddingTop: 8,
+    paddingTop: 16,
   },
   headerLeft: {
     flexDirection: 'row',
     flex: 1,
   },
   headerAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     marginRight: 14,
     borderWidth: 3,
     borderColor: '#6642EF',
@@ -642,17 +650,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   headerGreeting: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: 'Poppins_400Regular',
     color: '#FFFFFF',
   },
   headerName: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
   },
   goldCheckmark: {
-    fontSize: 22,
+    marginLeft: 6,
   },
   headerBadges: {
     flexDirection: 'row',
@@ -686,23 +694,25 @@ const styles = StyleSheet.create({
     color: '#A0A0A0',
   },
   headerIconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#2A2A2A',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#6642EF',
   },
 
-  // ROTATING CARDS CONTAINER
+  // ROTATING CARDS CONTAINER - SMALLER CARDS
   rotatingCardsContainer: {
     position: 'relative',
     marginBottom: 16,
-    height: 480,
+    height: 440,
   },
   backCard: {
     position: 'absolute',
-    top: 200,
+    top: 180,
     left: 0,
     right: 0,
     zIndex: 1,
@@ -946,6 +956,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  managerRole: {
+    fontSize: 13,
+    fontFamily: 'Poppins_500Medium',
+    color: '#A0A0A0',
   },
   viewManagerButton: {
     width: 44,
