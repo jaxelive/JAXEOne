@@ -5,11 +5,9 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { supabase } from '@/app/integrations/supabase/client';
 import { useCreatorData } from '@/hooks/useCreatorData';
@@ -17,16 +15,17 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 
 interface ChallengeDayData {
+  id: string;
   day_number: number;
-  week_number: number;
-  task_title: string;
-  task_description: string;
-  live_time_goal_minutes: number;
+  title: string;
+  description: string;
   objective: string;
+  time_goal_live: number;
+  requires_admin_validation: boolean;
 }
 
 export default function ChallengeDayDetailsScreen() {
-  const { dayNumber } = useLocalSearchParams<{ dayNumber: string }>();
+  const { dayId, dayNumber } = useLocalSearchParams<{ dayId: string; dayNumber: string }>();
   const { creator } = useCreatorData();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -38,23 +37,22 @@ export default function ChallengeDayDetailsScreen() {
   const [dayData, setDayData] = useState<ChallengeDayData | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchDayData();
-  }, [dayNumber, creator]);
+  }, [dayId, creator]);
 
   const fetchDayData = async () => {
-    if (!creator || !dayNumber) return;
+    if (!creator || !dayId) return;
 
     try {
       setLoading(true);
 
-      // Fetch day data from challenge_21_days table
+      // Fetch day data from challenge_days table
       const { data: dayInfo, error: dayError } = await supabase
-        .from('challenge_21_days')
+        .from('challenge_days')
         .select('*')
-        .eq('day_number', parseInt(dayNumber))
+        .eq('id', dayId)
         .single();
 
       if (dayError) throw dayError;
@@ -62,9 +60,9 @@ export default function ChallengeDayDetailsScreen() {
 
       // Check if day is completed
       const { data: progressData, error: progressError } = await supabase
-        .from('learning_challenge_progress')
+        .from('user_day_progress')
         .select('*')
-        .eq('creator_id', creator.id)
+        .eq('user_id', creator.id)
         .eq('day_number', parseInt(dayNumber))
         .single();
 
@@ -72,55 +70,12 @@ export default function ChallengeDayDetailsScreen() {
         console.error('Error fetching progress:', progressError);
       }
 
-      setIsCompleted(progressData?.is_completed || false);
+      setIsCompleted(progressData?.status === 'completed');
     } catch (error: any) {
       console.error('Error fetching day data:', error);
-      Alert.alert('Error', 'Failed to load day data');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleMarkComplete = async () => {
-    if (!creator || !dayNumber) return;
-
-    Alert.alert(
-      'Mark as Complete',
-      'Have you completed today\'s challenge?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Yes, Complete',
-          onPress: async () => {
-            setSubmitting(true);
-            try {
-              const { error } = await supabase
-                .from('learning_challenge_progress')
-                .upsert({
-                  creator_id: creator.id,
-                  day_number: parseInt(dayNumber),
-                  is_completed: true,
-                  completed_at: new Date().toISOString(),
-                });
-
-              if (error) throw error;
-
-              Alert.alert('🎉 Success!', `Day ${dayNumber} completed!`, [
-                {
-                  text: 'Continue',
-                  onPress: () => router.back(),
-                },
-              ]);
-            } catch (error: any) {
-              console.error('Error marking complete:', error);
-              Alert.alert('Error', 'Failed to mark day as completed');
-            } finally {
-              setSubmitting(false);
-            }
-          },
-        },
-      ]
-    );
   };
 
   if (loading || !fontsLoaded) {
@@ -134,8 +89,10 @@ export default function ChallengeDayDetailsScreen() {
             headerTintColor: colors.text,
           }}
         />
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading challenge...</Text>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading challenge...</Text>
+        </View>
       </View>
     );
   }
@@ -151,7 +108,9 @@ export default function ChallengeDayDetailsScreen() {
             headerTintColor: colors.text,
           }}
         />
-        <Text style={styles.errorText}>Challenge day not found</Text>
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>Challenge day not found</Text>
+        </View>
       </View>
     );
   }
@@ -172,12 +131,11 @@ export default function ChallengeDayDetailsScreen() {
           <View style={styles.dayBadge}>
             <Text style={styles.dayBadgeText}>Day {dayData.day_number}</Text>
           </View>
-          <Text style={styles.weekText}>Week {dayData.week_number}</Text>
         </View>
 
         {/* Title Card */}
         <View style={styles.card}>
-          <Text style={styles.title}>{dayData.task_title}</Text>
+          <Text style={styles.title}>{dayData.title}</Text>
           {isCompleted && (
             <View style={styles.completedBadge}>
               <IconSymbol
@@ -202,7 +160,7 @@ export default function ChallengeDayDetailsScreen() {
             />
             <Text style={styles.cardTitle}>Description</Text>
           </View>
-          <Text style={styles.description}>{dayData.task_description}</Text>
+          <Text style={styles.description}>{dayData.description}</Text>
         </View>
 
         {/* Objective Card */}
@@ -231,33 +189,22 @@ export default function ChallengeDayDetailsScreen() {
             <Text style={styles.cardTitle}>LIVE Time Goal</Text>
           </View>
           <View style={styles.timeGoalContainer}>
-            <Text style={styles.timeGoalValue}>{dayData.live_time_goal_minutes}</Text>
+            <Text style={styles.timeGoalValue}>{dayData.time_goal_live}</Text>
             <Text style={styles.timeGoalLabel}>minutes</Text>
           </View>
         </View>
 
         {/* Required Badge */}
-        <View style={styles.requiredCard}>
-          <IconSymbol
-            ios_icon_name="exclamationmark.triangle.fill"
-            android_material_icon_name="warning"
-            size={24}
-            color={colors.warning}
-          />
-          <Text style={styles.requiredText}>This challenge day is required</Text>
-        </View>
-
-        {/* Complete Button */}
-        {!isCompleted && (
-          <TouchableOpacity
-            style={[styles.completeButton, submitting && styles.buttonDisabled]}
-            onPress={handleMarkComplete}
-            disabled={submitting}
-          >
-            <Text style={styles.completeButtonText}>
-              {submitting ? 'Marking Complete...' : 'Mark as Completed'}
-            </Text>
-          </TouchableOpacity>
+        {dayData.requires_admin_validation && (
+          <View style={styles.requiredCard}>
+            <IconSymbol
+              ios_icon_name="exclamationmark.triangle.fill"
+              android_material_icon_name="warning"
+              size={24}
+              color={colors.warning}
+            />
+            <Text style={styles.requiredText}>This challenge day is required</Text>
+          </View>
         )}
 
         {isCompleted && (
@@ -283,6 +230,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     padding: 20,
@@ -312,17 +264,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
-    marginBottom: 12,
   },
   dayBadgeText: {
     fontSize: 20,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
-  },
-  weekText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: colors.textSecondary,
   },
   card: {
     backgroundColor: colors.backgroundAlt,
@@ -405,20 +351,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Poppins_600SemiBold',
     color: colors.text,
-  },
-  completeButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    padding: 18,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  completeButtonText: {
-    fontSize: 16,
-    fontFamily: 'Poppins_700Bold',
-    color: '#FFFFFF',
   },
   completedCard: {
     backgroundColor: colors.backgroundAlt,

@@ -96,10 +96,10 @@ export default function HomeScreen() {
 
     try {
       const { data: challengeData, error: challengeError } = await supabase
-        .from('learning_challenge_progress')
+        .from('user_day_progress')
         .select('*')
-        .eq('creator_id', creator.id)
-        .eq('is_completed', true);
+        .eq('user_id', creator.id)
+        .eq('status', 'completed');
 
       if (challengeError) {
         console.error('[HomeScreen] Error fetching challenge data:', challengeError);
@@ -110,16 +110,16 @@ export default function HomeScreen() {
       }
 
       const { data: educationData, error: educationError } = await supabase
-        .from('ur_education_progress')
+        .from('user_video_progress')
         .select('*')
-        .eq('creator_id', creator.id)
-        .eq('quiz_passed', true);
+        .eq('user_id', creator.id)
+        .eq('completed', true);
 
       if (educationError) {
         console.error('[HomeScreen] Error fetching education data:', educationError);
       } else {
         const completedVideos = educationData?.length || 0;
-        console.log('[HomeScreen] Education progress:', completedVideos, '/12');
+        console.log('[HomeScreen] Education progress:', completedVideos, '/5');
         setEducationProgress(completedVideos);
       }
     } catch (error: any) {
@@ -249,7 +249,7 @@ export default function HomeScreen() {
                 <RotatingCard
                   type="bonus"
                   isFaded={true}
-                  onPress={() => router.push('/(tabs)/bonus-details')}
+                  onPress={() => console.log('Bonus card tapped - no navigation')}
                   data={{
                     bonusAmount: 100,
                     nextBonus: 175,
@@ -264,7 +264,7 @@ export default function HomeScreen() {
               <View style={styles.frontCard}>
                 <RotatingCard
                   type="diamonds"
-                  onPress={() => console.log('Diamonds card tapped')}
+                  onPress={() => console.log('Diamonds card tapped - no navigation')}
                   data={{
                     diamondsEarned: stats.totalDiamonds,
                     totalGoal: stats.targetAmount,
@@ -275,11 +275,11 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Extra spacing before 21-Day Challenge */}
-            <View style={{ height: 24 }} />
+            {/* EXTRA SPACING TO SHOW BONUS CARD FULLY */}
+            <View style={{ height: 80 }} />
 
             {/* 21-DAY CHALLENGE CARD */}
-            <CardPressable onPress={() => router.push('/(tabs)/learning-hub')}>
+            <CardPressable onPress={() => router.push('/(tabs)/challenge-list')}>
               <View style={styles.darkCard}>
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.cardHeaderLeft}>
@@ -340,7 +340,7 @@ export default function HomeScreen() {
             </CardPressable>
 
             {/* ACADEMY CARD */}
-            <CardPressable onPress={() => router.push('/(tabs)/learning-hub')}>
+            <CardPressable onPress={() => router.push('/(tabs)/academy')}>
               <View style={styles.darkCard}>
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.cardHeaderLeft}>
