@@ -1,14 +1,14 @@
 
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
-// Modern, fresh color palette with soft pastels and vibrant accents
+// Dark theme color palette inspired by the design
 export const colors = {
-  // Primary gradient colors - soft purple/pink blend
+  // Primary gradient colors - purple/violet blend
   primary: '#8B5CF6',           // Vibrant purple
-  primaryLight: '#C084FC',      // Light purple
+  primaryLight: '#A78BFA',      // Light purple
   primaryDark: '#7C3AED',       // Deep purple
   
-  // Accent colors - fresh and youthful
+  // Accent colors
   accent: '#EC4899',            // Pink accent
   accentLight: '#F9A8D4',       // Light pink
   
@@ -16,23 +16,24 @@ export const colors = {
   secondary: '#06B6D4',         // Cyan
   secondaryLight: '#67E8F9',    // Light cyan
   
-  // Background colors - soft and clean
-  background: '#FAFAFA',        // Very light grey (almost white)
-  backgroundAlt: '#FFFFFF',     // Pure white for cards
-  backgroundGradientStart: '#FAF5FF', // Very light purple
-  backgroundGradientEnd: '#FDF4FF',   // Very light pink
+  // Background colors - dark theme
+  background: '#0F0F0F',        // Very dark grey (almost black)
+  backgroundAlt: '#1A1A1A',     // Dark grey for cards
+  backgroundCard: '#1F1F1F',    // Slightly lighter for elevated cards
+  backgroundGradientStart: '#1A1A1A',
+  backgroundGradientEnd: '#0F0F0F',
   
-  // Text colors
-  text: '#1F2937',              // Dark grey (softer than black)
-  textSecondary: '#6B7280',     // Medium grey
-  textTertiary: '#9CA3AF',      // Light grey
+  // Text colors - adjusted for dark theme
+  text: '#FFFFFF',              // White for primary text
+  textSecondary: '#A0A0A0',     // Light grey for secondary text
+  textTertiary: '#707070',      // Medium grey for tertiary text
   
   // UI elements
-  grey: '#F3F4F6',              // Very light grey
-  greyMedium: '#E5E7EB',        // Medium grey
-  greyDark: '#9CA3AF',          // Dark grey
+  grey: '#2A2A2A',              // Dark grey for backgrounds
+  greyMedium: '#3A3A3A',        // Medium grey
+  greyDark: '#1A1A1A',          // Darker grey
   
-  // Status colors - vibrant and friendly
+  // Status colors
   success: '#10B981',           // Green
   successLight: '#6EE7B7',      // Light green
   warning: '#F59E0B',           // Orange
@@ -41,16 +42,17 @@ export const colors = {
   errorLight: '#FCA5A5',        // Light red
   
   // Special colors
-  border: '#F3F4F6',            // Very light border
-  shadow: 'rgba(139, 92, 246, 0.1)', // Soft purple shadow
-  overlay: 'rgba(0, 0, 0, 0.3)', // Dark overlay
+  border: '#2A2A2A',            // Dark border
+  shadow: 'rgba(0, 0, 0, 0.5)', // Dark shadow
+  overlay: 'rgba(0, 0, 0, 0.7)', // Dark overlay
   
   // Gradient colors for cards
-  gradientPurple: ['#8B5CF6', '#C084FC'],
+  gradientPurple: ['#8B5CF6', '#A78BFA'],
   gradientPink: ['#EC4899', '#F9A8D4'],
   gradientCyan: ['#06B6D4', '#67E8F9'],
   gradientSunset: ['#F59E0B', '#EC4899'],
   gradientOcean: ['#06B6D4', '#8B5CF6'],
+  gradientDark: ['#1F1F1F', '#2A2A2A'],
 };
 
 export const buttonStyles = StyleSheet.create({
@@ -119,7 +121,7 @@ export const commonStyles = StyleSheet.create({
     padding: 20,
     marginVertical: 8,
     width: '100%',
-    boxShadow: '0px 8px 24px rgba(139, 92, 246, 0.08)',
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.3)',
     elevation: 4,
   },
   icon: {

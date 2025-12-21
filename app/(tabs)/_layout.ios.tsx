@@ -10,21 +10,13 @@ export default function TabLayout() {
         <Icon sf="house.fill" />
         <Label>Home</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="missions" name="missions">
-        <Icon sf="list.bullet.clipboard.fill" />
-        <Label>Missions</Label>
+      <NativeTabs.Trigger key="tools" name="missions">
+        <Icon sf="square.grid.2x2.fill" />
+        <Label>Tools</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="live" name="live">
-        <Icon sf="video.fill" />
-        <Label>LIVE</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="rewards" name="rewards">
-        <Icon sf="gift.fill" />
-        <Label>Rewards</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="profile" name="profile">
-        <Icon sf="person.fill" />
-        <Label>Profile</Label>
+      <NativeTabs.Trigger key="settings" name="profile">
+        <Icon sf="gearshape.fill" />
+        <Label>Settings</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
