@@ -359,427 +359,434 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* ROTATING CARDS SECTION */}
-            <View style={styles.rotatingCardsContainer}>
-              {activeCardIndex === 0 ? (
-                <>
-                  {/* Back Card (Faded) - Bonus Forecast */}
-                  <TouchableOpacity 
-                    style={styles.backCard}
-                    onPress={() => setActiveCardIndex(1)}
-                    activeOpacity={0.9}
-                  >
-                    <RotatingCard
-                      type="bonus"
-                      isFaded={true}
-                      onPress={() => {}}
-                      data={{
-                        bonusAmount: 100,
-                        nextBonus: 175,
-                        liveDays: liveDays,
-                        liveHours: liveHours,
-                        battlesBooked: nextBattle ? 1 : 0,
-                      }}
-                    />
-                  </TouchableOpacity>
+            {/* ========== HERO MODULE: ROTATING CARDS (SELF-CONTAINED) ========== */}
+            <View style={styles.heroModule}>
+              <View style={styles.rotatingCardsContainer}>
+                {activeCardIndex === 0 ? (
+                  <>
+                    {/* Back Card (Faded) - Bonus Forecast */}
+                    <TouchableOpacity 
+                      style={styles.backCard}
+                      onPress={() => setActiveCardIndex(1)}
+                      activeOpacity={0.9}
+                    >
+                      <RotatingCard
+                        type="bonus"
+                        isFaded={true}
+                        onPress={() => {}}
+                        data={{
+                          bonusAmount: 100,
+                          nextBonus: 175,
+                          liveDays: liveDays,
+                          liveHours: liveHours,
+                          battlesBooked: nextBattle ? 1 : 0,
+                        }}
+                      />
+                    </TouchableOpacity>
 
-                  {/* Front Card - Diamonds */}
-                  <View style={styles.frontCard}>
-                    <RotatingCard
-                      type="diamonds"
-                      onPress={() => {}}
-                      data={{
-                        diamondsEarned: currentDiamonds,
-                        totalGoal: nextTierInfo.target,
-                        remaining: remaining,
-                        nextTier: nextTierInfo.tier,
-                      }}
-                    />
-                  </View>
-                </>
-              ) : (
-                <>
-                  {/* Back Card (Faded) - Diamonds */}
-                  <TouchableOpacity 
-                    style={styles.backCard}
-                    onPress={() => setActiveCardIndex(0)}
-                    activeOpacity={0.9}
-                  >
-                    <RotatingCard
-                      type="diamonds"
-                      isFaded={true}
-                      onPress={() => {}}
-                      data={{
-                        diamondsEarned: currentDiamonds,
-                        totalGoal: nextTierInfo.target,
-                        remaining: remaining,
-                        nextTier: nextTierInfo.tier,
-                      }}
-                    />
-                  </TouchableOpacity>
+                    {/* Front Card - Diamonds */}
+                    <View style={styles.frontCard}>
+                      <RotatingCard
+                        type="diamonds"
+                        onPress={() => {}}
+                        data={{
+                          diamondsEarned: currentDiamonds,
+                          totalGoal: nextTierInfo.target,
+                          remaining: remaining,
+                          nextTier: nextTierInfo.tier,
+                        }}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    {/* Back Card (Faded) - Diamonds */}
+                    <TouchableOpacity 
+                      style={styles.backCard}
+                      onPress={() => setActiveCardIndex(0)}
+                      activeOpacity={0.9}
+                    >
+                      <RotatingCard
+                        type="diamonds"
+                        isFaded={true}
+                        onPress={() => {}}
+                        data={{
+                          diamondsEarned: currentDiamonds,
+                          totalGoal: nextTierInfo.target,
+                          remaining: remaining,
+                          nextTier: nextTierInfo.tier,
+                        }}
+                      />
+                    </TouchableOpacity>
 
-                  {/* Front Card - Bonus Forecast */}
-                  <View style={styles.frontCard}>
-                    <RotatingCard
-                      type="bonus"
-                      onPress={() => {}}
-                      data={{
-                        bonusAmount: 100,
-                        nextBonus: 175,
-                        liveDays: liveDays,
-                        liveHours: liveHours,
-                        battlesBooked: nextBattle ? 1 : 0,
-                      }}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-
-            {/* MY DIAMONDS & BONUS BUTTON */}
-            <TouchableOpacity 
-              style={styles.diamondsBonusButton}
-              onPress={() => router.push('/(tabs)/bonus-details')}
-            >
-              <Text style={styles.diamondsBonusButtonText}>My Diamonds & Bonus</Text>
-              <IconSymbol 
-                ios_icon_name="arrow.right" 
-                android_material_icon_name="arrow-forward" 
-                size={18} 
-                color="#FFFFFF" 
-              />
-            </TouchableOpacity>
-
-            {/* 21-DAY CHALLENGE CARD */}
-            <CardPressable onPress={() => router.push('/(tabs)/challenge-list')}>
-              <View style={styles.darkCard}>
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.cardHeaderLeft}>
-                    <View style={styles.pendingDot} />
-                    <Text style={styles.pendingText}>
-                      {challengeProgress 
-                        ? `${challengeProgress.totalDays - challengeProgress.completedDays} PENDING TASKS`
-                        : 'LOADING...'}
-                    </Text>
-                  </View>
-                  <View style={styles.circularProgress}>
-                    <AnimatedNumber 
-                      value={challengePercentage} 
-                      style={styles.circularProgressText}
-                      decimals={0}
-                      suffix="%"
-                      formatNumber={false}
-                    />
-                  </View>
-                </View>
-
-                <Text style={styles.cardTitle}>21-Day Challenge</Text>
-
-                {/* Start Challenge Button - Moved to top */}
-                {challengeProgress && challengeProgress.completedDays === 0 && (
-                  <TouchableOpacity 
-                    style={styles.startChallengeButton}
-                    onPress={() => router.push('/(tabs)/challenge-list')}
-                  >
-                    <Text style={styles.startChallengeButtonText}>Start Challenge</Text>
-                  </TouchableOpacity>
+                    {/* Front Card - Bonus Forecast */}
+                    <View style={styles.frontCard}>
+                      <RotatingCard
+                        type="bonus"
+                        onPress={() => {}}
+                        data={{
+                          bonusAmount: 100,
+                          nextBonus: 175,
+                          liveDays: liveDays,
+                          liveHours: liveHours,
+                          battlesBooked: nextBattle ? 1 : 0,
+                        }}
+                      />
+                    </View>
+                  </>
                 )}
-
-                {/* Challenge Days */}
-                {challengeProgress && (
-                  <View style={styles.challengeDays}>
-                    {[...Array(4)].map((_, i) => {
-                      const dayNum = challengeProgress.currentDay - 1 + i;
-                      const isCompleted = dayNum < challengeProgress.currentDay;
-                      const isCurrent = dayNum === challengeProgress.currentDay;
-                      const isLocked = dayNum > challengeProgress.currentDay;
-
-                      return (
-                        <View key={i} style={styles.challengeDay}>
-                          <View style={[
-                            styles.challengeDayCircle,
-                            isCompleted && styles.challengeDayCompleted,
-                            isCurrent && styles.challengeDayActive,
-                            isLocked && styles.challengeDayLocked,
-                          ]}>
-                            {isCompleted ? (
-                              <IconSymbol 
-                                ios_icon_name="checkmark" 
-                                android_material_icon_name="check" 
-                                size={20} 
-                                color="#FFFFFF" 
-                              />
-                            ) : (
-                              <Text style={styles.challengeDayNumber}>{dayNum}</Text>
-                            )}
-                          </View>
-                          <Text style={isLocked ? styles.challengeDayLabelLocked : styles.challengeDayLabel}>
-                            Day {dayNum}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                )}
-
-                {/* Continue Button */}
-                <TouchableOpacity 
-                  style={styles.continueButton}
-                  onPress={() => router.push('/(tabs)/challenge-list')}
-                >
-                  <Text style={styles.continueButtonText}>Continue Today&apos;s Task</Text>
-                  <IconSymbol 
-                    ios_icon_name="arrow.right" 
-                    android_material_icon_name="arrow-forward" 
-                    size={18} 
-                    color="#FFFFFF" 
-                  />
-                </TouchableOpacity>
               </View>
-            </CardPressable>
+            </View>
+            {/* ========== END HERO MODULE ========== */}
 
-            {/* TOP 3 IN THE NETWORK */}
-            <View style={styles.darkCard}>
-              <Text style={styles.cardTitle}>Top 3 in the Network</Text>
-              <Text style={styles.topCreatorsSubtitle}>Leading creators by diamonds earned</Text>
-              
-              {topCreators.length > 0 ? (
-                topCreators.map((topCreator, index) => (
-                  <View key={index} style={styles.topCreatorRow}>
-                    <View style={styles.topCreatorRank}>
-                      <Text style={styles.topCreatorRankText}>{index + 1}</Text>
-                    </View>
-                    <View style={styles.topCreatorAvatar}>
-                      {topCreator.avatar_url || topCreator.profile_picture_url ? (
-                        <Image
-                          source={{ uri: topCreator.avatar_url || topCreator.profile_picture_url }}
-                          style={styles.topCreatorAvatarImage}
-                        />
-                      ) : (
-                        <View style={styles.topCreatorAvatarPlaceholder}>
-                          <IconSymbol
-                            ios_icon_name="person.fill"
-                            android_material_icon_name="person"
-                            size={20}
-                            color="#A0A0A0"
-                          />
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.topCreatorInfo}>
-                      <Text style={styles.topCreatorHandle}>@{topCreator.creator_handle}</Text>
-                      <Text style={styles.topCreatorDiamonds}>
-                        {topCreator.total_diamonds.toLocaleString()} diamonds
+            {/* ========== REST OF HOME CONTENT (SEPARATE SECTION) ========== */}
+            <View style={styles.restOfHomeContent}>
+              {/* MY DIAMONDS & BONUS BUTTON */}
+              <TouchableOpacity 
+                style={styles.diamondsBonusButton}
+                onPress={() => router.push('/(tabs)/bonus-details')}
+              >
+                <Text style={styles.diamondsBonusButtonText}>My Diamonds & Bonus</Text>
+                <IconSymbol 
+                  ios_icon_name="arrow.right" 
+                  android_material_icon_name="arrow-forward" 
+                  size={18} 
+                  color="#FFFFFF" 
+                />
+              </TouchableOpacity>
+
+              {/* 21-DAY CHALLENGE CARD */}
+              <CardPressable onPress={() => router.push('/(tabs)/challenge-list')}>
+                <View style={styles.darkCard}>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={styles.cardHeaderLeft}>
+                      <View style={styles.pendingDot} />
+                      <Text style={styles.pendingText}>
+                        {challengeProgress 
+                          ? `${challengeProgress.totalDays - challengeProgress.completedDays} PENDING TASKS`
+                          : 'LOADING...'}
                       </Text>
                     </View>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noDataText}>No data available</Text>
-              )}
-            </View>
-
-            {/* ACADEMY CARD */}
-            <CardPressable onPress={() => router.push('/(tabs)/academy')}>
-              <View style={styles.darkCard}>
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.cardHeaderLeft}>
-                    <Text style={styles.cardTitle}>Academy</Text>
-                  </View>
-                  <View style={styles.requiredBadge}>
-                    <Text style={styles.requiredBadgeText}>REQUIRED</Text>
-                  </View>
-                </View>
-
-                <View style={styles.academyContent}>
-                  <View style={styles.academyLeft}>
-                    <Text style={styles.academyProgressLabel}>Video Progress</Text>
-                    <View style={styles.academyProgressValueRow}>
+                    <View style={styles.circularProgress}>
                       <AnimatedNumber 
-                        value={educationProgress} 
-                        style={styles.academyProgressValue}
+                        value={challengePercentage} 
+                        style={styles.circularProgressText}
+                        decimals={0}
+                        suffix="%"
                         formatNumber={false}
                       />
-                      <Text style={styles.academyProgressValue}>/5</Text>
                     </View>
-                    
-                    <AnimatedProgressBar
-                      percentage={(educationProgress / 5) * 100}
-                      height={6}
-                      containerStyle={{ marginBottom: 12 }}
-                    />
+                  </View>
 
-                    <View style={styles.quizStatus}>
-                      <IconSymbol 
-                        ios_icon_name="lock.fill" 
-                        android_material_icon_name="lock" 
-                        size={14} 
-                        color="#A0A0A0" 
-                      />
-                      <Text style={styles.quizStatusText}>Quiz: Not started</Text>
-                    </View>
+                  <Text style={styles.cardTitle}>21-Day Challenge</Text>
 
-                    <TouchableOpacity>
-                      <Text style={styles.continueLink}>Continue learning</Text>
+                  {/* Start Challenge Button - Moved to top */}
+                  {challengeProgress && challengeProgress.completedDays === 0 && (
+                    <TouchableOpacity 
+                      style={styles.startChallengeButton}
+                      onPress={() => router.push('/(tabs)/challenge-list')}
+                    >
+                      <Text style={styles.startChallengeButtonText}>Start Challenge</Text>
                     </TouchableOpacity>
-                  </View>
+                  )}
 
-                  <View style={styles.academyRight}>
-                    <View style={styles.videoThumbnail}>
-                      <View style={styles.playIconContainer}>
-                        <IconSymbol 
-                          ios_icon_name="play.fill" 
-                          android_material_icon_name="play-arrow" 
-                          size={32} 
-                          color="#FFFFFF" 
-                        />
-                      </View>
+                  {/* Challenge Days */}
+                  {challengeProgress && (
+                    <View style={styles.challengeDays}>
+                      {[...Array(4)].map((_, i) => {
+                        const dayNum = challengeProgress.currentDay - 1 + i;
+                        const isCompleted = dayNum < challengeProgress.currentDay;
+                        const isCurrent = dayNum === challengeProgress.currentDay;
+                        const isLocked = dayNum > challengeProgress.currentDay;
+
+                        return (
+                          <View key={i} style={styles.challengeDay}>
+                            <View style={[
+                              styles.challengeDayCircle,
+                              isCompleted && styles.challengeDayCompleted,
+                              isCurrent && styles.challengeDayActive,
+                              isLocked && styles.challengeDayLocked,
+                            ]}>
+                              {isCompleted ? (
+                                <IconSymbol 
+                                  ios_icon_name="checkmark" 
+                                  android_material_icon_name="check" 
+                                  size={20} 
+                                  color="#FFFFFF" 
+                                />
+                              ) : (
+                                <Text style={styles.challengeDayNumber}>{dayNum}</Text>
+                              )}
+                            </View>
+                            <Text style={isLocked ? styles.challengeDayLabelLocked : styles.challengeDayLabel}>
+                              Day {dayNum}
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
-                  </View>
-                </View>
-              </View>
-            </CardPressable>
+                  )}
 
-            {/* MANAGER CARD - TEMPORARY DATA */}
-            <CardPressable onPress={() => router.push('/(tabs)/manager-details')}>
-              <View style={styles.darkCard}>
-                <View style={styles.managerContent}>
-                  <View style={styles.managerLeft}>
-                    <Image
-                      source={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop' }}
-                      style={styles.managerAvatar}
-                    />
-                    <View style={styles.managerOnlineIndicator} />
-                  </View>
-                  <View style={styles.managerInfo}>
-                    <Text style={styles.managerLabel}>ASSIGNED MANAGER</Text>
-                    <Text style={styles.managerName}>Ivan Martinez</Text>
-                    <Text style={styles.managerRole}>Creator Manager</Text>
-                  </View>
-                  <TouchableOpacity style={styles.viewManagerButton} onPress={() => router.push('/(tabs)/manager-details')}>
+                  {/* Continue Button */}
+                  <TouchableOpacity 
+                    style={styles.continueButton}
+                    onPress={() => router.push('/(tabs)/challenge-list')}
+                  >
+                    <Text style={styles.continueButtonText}>Continue Today&apos;s Task</Text>
                     <IconSymbol 
-                      ios_icon_name="person.circle.fill" 
-                      android_material_icon_name="account-circle" 
-                      size={20} 
+                      ios_icon_name="arrow.right" 
+                      android_material_icon_name="arrow-forward" 
+                      size={18} 
                       color="#FFFFFF" 
                     />
                   </TouchableOpacity>
                 </View>
-              </View>
-            </CardPressable>
+              </CardPressable>
 
-            {/* VS BATTLE CARD */}
-            <CardPressable onPress={() => router.push('/(tabs)/battles')}>
+              {/* TOP 3 IN THE NETWORK */}
               <View style={styles.darkCard}>
-                <View style={styles.battleHeader}>
-                  <Text style={styles.battleTitle}>VS Battle</Text>
-                  <TouchableOpacity style={styles.manageButton} onPress={() => router.push('/(tabs)/battles')}>
-                    <Text style={styles.manageButtonText}>Manage</Text>
-                  </TouchableOpacity>
-                </View>
-                {nextBattle ? (
-                  <>
-                    <Text style={styles.battleSubtitle}>Upcoming Battle</Text>
-                    <View style={styles.battleContent}>
-                      <View style={styles.battlePlayer}>
-                        <Image
-                          source={{ uri: profileImageUrl }}
-                          style={styles.battleAvatar}
-                        />
-                        <Text style={styles.battlePlayerName}>You</Text>
+                <Text style={styles.cardTitle}>Top 3 in the Network</Text>
+                <Text style={styles.topCreatorsSubtitle}>Leading creators by diamonds earned</Text>
+                
+                {topCreators.length > 0 ? (
+                  topCreators.map((topCreator, index) => (
+                    <View key={index} style={styles.topCreatorRow}>
+                      <View style={styles.topCreatorRank}>
+                        <Text style={styles.topCreatorRankText}>{index + 1}</Text>
                       </View>
-
-                      <View style={styles.battleCenter}>
-                        <Text style={styles.battleTimerLabel}>SCHEDULED</Text>
-                        <Text style={styles.battleTimer}>
-                          {new Date(nextBattle.battle_date).toLocaleDateString()}
-                        </Text>
-                        <Text style={styles.battleDate}>
-                          {new Date(nextBattle.battle_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      </View>
-
-                      <View style={styles.battlePlayer}>
-                        <View style={styles.battleAvatarContainer}>
+                      <View style={styles.topCreatorAvatar}>
+                        {topCreator.avatar_url || topCreator.profile_picture_url ? (
                           <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop' }}
-                            style={styles.battleAvatar}
+                            source={{ uri: topCreator.avatar_url || topCreator.profile_picture_url }}
+                            style={styles.topCreatorAvatarImage}
                           />
-                        </View>
-                        <Text style={styles.battlePlayerName}>
-                          {nextBattle.creator_2_handle || 'Opponent'}
+                        ) : (
+                          <View style={styles.topCreatorAvatarPlaceholder}>
+                            <IconSymbol
+                              ios_icon_name="person.fill"
+                              android_material_icon_name="person"
+                              size={20}
+                              color="#A0A0A0"
+                            />
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.topCreatorInfo}>
+                        <Text style={styles.topCreatorHandle}>@{topCreator.creator_handle}</Text>
+                        <Text style={styles.topCreatorDiamonds}>
+                          {topCreator.total_diamonds.toLocaleString()} diamonds
                         </Text>
                       </View>
                     </View>
-                  </>
+                  ))
                 ) : (
-                  <Text style={styles.battleSubtitle}>No upcoming battles. Book one now!</Text>
+                  <Text style={styles.noDataText}>No data available</Text>
                 )}
               </View>
-            </CardPressable>
 
-            {/* AI FLYER CARD */}
-            <CardPressable onPress={() => router.push('/(tabs)/ai-flyers')}>
-              <View style={styles.darkCard}>
-                <View style={styles.flyerHeader}>
-                  <View style={styles.flyerHeaderLeft}>
-                    <IconSymbol 
-                      ios_icon_name="wand.and.stars" 
-                      android_material_icon_name="auto-awesome" 
-                      size={28} 
-                      color="#6642EF" 
-                    />
-                    <View>
-                      <Text style={styles.flyerTitle}>AI Flyer Creator</Text>
-                      <Text style={styles.flyerSubtitle}>Create stunning promotional flyers</Text>
+              {/* ACADEMY CARD */}
+              <CardPressable onPress={() => router.push('/(tabs)/academy')}>
+                <View style={styles.darkCard}>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={styles.cardHeaderLeft}>
+                      <Text style={styles.cardTitle}>Academy</Text>
+                    </View>
+                    <View style={styles.requiredBadge}>
+                      <Text style={styles.requiredBadgeText}>REQUIRED</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.academyContent}>
+                    <View style={styles.academyLeft}>
+                      <Text style={styles.academyProgressLabel}>Video Progress</Text>
+                      <View style={styles.academyProgressValueRow}>
+                        <AnimatedNumber 
+                          value={educationProgress} 
+                          style={styles.academyProgressValue}
+                          formatNumber={false}
+                        />
+                        <Text style={styles.academyProgressValue}>/5</Text>
+                      </View>
+                      
+                      <AnimatedProgressBar
+                        percentage={(educationProgress / 5) * 100}
+                        height={6}
+                        containerStyle={{ marginBottom: 12 }}
+                      />
+
+                      <View style={styles.quizStatus}>
+                        <IconSymbol 
+                          ios_icon_name="lock.fill" 
+                          android_material_icon_name="lock" 
+                          size={14} 
+                          color="#A0A0A0" 
+                        />
+                        <Text style={styles.quizStatusText}>Quiz: Not started</Text>
+                      </View>
+
+                      <TouchableOpacity>
+                        <Text style={styles.continueLink}>Continue learning</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.academyRight}>
+                      <View style={styles.videoThumbnail}>
+                        <View style={styles.playIconContainer}>
+                          <IconSymbol 
+                            ios_icon_name="play.fill" 
+                            android_material_icon_name="play-arrow" 
+                            size={32} 
+                            color="#FFFFFF" 
+                          />
+                        </View>
+                      </View>
                     </View>
                   </View>
                 </View>
+              </CardPressable>
 
-                <View style={styles.flyerFeatures}>
-                  <View style={styles.flyerFeature}>
-                    <IconSymbol 
-                      ios_icon_name="sparkles" 
-                      android_material_icon_name="auto-awesome" 
-                      size={16} 
-                      color="#A0A0A0" 
-                    />
-                    <Text style={styles.flyerFeatureText}>AI-Powered Design</Text>
-                  </View>
-                  <View style={styles.flyerFeature}>
-                    <IconSymbol 
-                      ios_icon_name="photo" 
-                      android_material_icon_name="image" 
-                      size={16} 
-                      color="#A0A0A0" 
-                    />
-                    <Text style={styles.flyerFeatureText}>Multiple Templates</Text>
-                  </View>
-                  <View style={styles.flyerFeature}>
-                    <IconSymbol 
-                      ios_icon_name="square.and.arrow.up" 
-                      android_material_icon_name="share" 
-                      size={16} 
-                      color="#A0A0A0" 
-                    />
-                    <Text style={styles.flyerFeatureText}>Easy Sharing</Text>
+              {/* MANAGER CARD - TEMPORARY DATA */}
+              <CardPressable onPress={() => router.push('/(tabs)/manager-details')}>
+                <View style={styles.darkCard}>
+                  <View style={styles.managerContent}>
+                    <View style={styles.managerLeft}>
+                      <Image
+                        source={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop' }}
+                        style={styles.managerAvatar}
+                      />
+                      <View style={styles.managerOnlineIndicator} />
+                    </View>
+                    <View style={styles.managerInfo}>
+                      <Text style={styles.managerLabel}>ASSIGNED MANAGER</Text>
+                      <Text style={styles.managerName}>Ivan Martinez</Text>
+                      <Text style={styles.managerRole}>Creator Manager</Text>
+                    </View>
+                    <TouchableOpacity style={styles.viewManagerButton} onPress={() => router.push('/(tabs)/manager-details')}>
+                      <IconSymbol 
+                        ios_icon_name="person.circle.fill" 
+                        android_material_icon_name="account-circle" 
+                        size={20} 
+                        color="#FFFFFF" 
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
+              </CardPressable>
 
-                <TouchableOpacity style={styles.createFlyerButton}>
-                  <Text style={styles.createFlyerButtonText}>Create Flyer</Text>
-                  <IconSymbol 
-                    ios_icon_name="arrow.right" 
-                    android_material_icon_name="arrow-forward" 
-                    size={18} 
-                    color="#FFFFFF" 
-                  />
-                </TouchableOpacity>
-              </View>
-            </CardPressable>
+              {/* VS BATTLE CARD */}
+              <CardPressable onPress={() => router.push('/(tabs)/battles')}>
+                <View style={styles.darkCard}>
+                  <View style={styles.battleHeader}>
+                    <Text style={styles.battleTitle}>VS Battle</Text>
+                    <TouchableOpacity style={styles.manageButton} onPress={() => router.push('/(tabs)/battles')}>
+                      <Text style={styles.manageButtonText}>Manage</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {nextBattle ? (
+                    <>
+                      <Text style={styles.battleSubtitle}>Upcoming Battle</Text>
+                      <View style={styles.battleContent}>
+                        <View style={styles.battlePlayer}>
+                          <Image
+                            source={{ uri: profileImageUrl }}
+                            style={styles.battleAvatar}
+                          />
+                          <Text style={styles.battlePlayerName}>You</Text>
+                        </View>
 
-            {/* Bottom Spacing */}
-            <View style={{ height: 40 }} />
+                        <View style={styles.battleCenter}>
+                          <Text style={styles.battleTimerLabel}>SCHEDULED</Text>
+                          <Text style={styles.battleTimer}>
+                            {new Date(nextBattle.battle_date).toLocaleDateString()}
+                          </Text>
+                          <Text style={styles.battleDate}>
+                            {new Date(nextBattle.battle_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                        </View>
+
+                        <View style={styles.battlePlayer}>
+                          <View style={styles.battleAvatarContainer}>
+                            <Image
+                              source={{ uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop' }}
+                              style={styles.battleAvatar}
+                            />
+                          </View>
+                          <Text style={styles.battlePlayerName}>
+                            {nextBattle.creator_2_handle || 'Opponent'}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.battleSubtitle}>No upcoming battles. Book one now!</Text>
+                  )}
+                </View>
+              </CardPressable>
+
+              {/* AI FLYER CARD */}
+              <CardPressable onPress={() => router.push('/(tabs)/ai-flyers')}>
+                <View style={styles.darkCard}>
+                  <View style={styles.flyerHeader}>
+                    <View style={styles.flyerHeaderLeft}>
+                      <IconSymbol 
+                        ios_icon_name="wand.and.stars" 
+                        android_material_icon_name="auto-awesome" 
+                        size={28} 
+                        color="#6642EF" 
+                      />
+                      <View>
+                        <Text style={styles.flyerTitle}>AI Flyer Creator</Text>
+                        <Text style={styles.flyerSubtitle}>Create stunning promotional flyers</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.flyerFeatures}>
+                    <View style={styles.flyerFeature}>
+                      <IconSymbol 
+                        ios_icon_name="sparkles" 
+                        android_material_icon_name="auto-awesome" 
+                        size={16} 
+                        color="#A0A0A0" 
+                      />
+                      <Text style={styles.flyerFeatureText}>AI-Powered Design</Text>
+                    </View>
+                    <View style={styles.flyerFeature}>
+                      <IconSymbol 
+                        ios_icon_name="photo" 
+                        android_material_icon_name="image" 
+                        size={16} 
+                        color="#A0A0A0" 
+                      />
+                      <Text style={styles.flyerFeatureText}>Multiple Templates</Text>
+                    </View>
+                    <View style={styles.flyerFeature}>
+                      <IconSymbol 
+                        ios_icon_name="square.and.arrow.up" 
+                        android_material_icon_name="share" 
+                        size={16} 
+                        color="#A0A0A0" 
+                      />
+                      <Text style={styles.flyerFeatureText}>Easy Sharing</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity style={styles.createFlyerButton}>
+                    <Text style={styles.createFlyerButtonText}>Create Flyer</Text>
+                    <IconSymbol 
+                      ios_icon_name="arrow.right" 
+                      android_material_icon_name="arrow-forward" 
+                      size={18} 
+                      color="#FFFFFF" 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </CardPressable>
+
+              {/* Bottom Spacing */}
+              <View style={{ height: 40 }} />
+            </View>
+            {/* ========== END REST OF HOME CONTENT ========== */}
           </Animated.View>
         </ScrollView>
 
@@ -977,10 +984,12 @@ const styles = StyleSheet.create({
     borderColor: '#6642EF',
   },
 
-  // ROTATING CARDS CONTAINER - SMALLER CARDS
+  // ========== HERO MODULE (SELF-CONTAINED) ==========
+  heroModule: {
+    marginBottom: 24,
+  },
   rotatingCardsContainer: {
     position: 'relative',
-    marginBottom: 16,
     height: 440,
   },
   backCard: {
@@ -996,6 +1005,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 2,
+  },
+
+  // ========== REST OF HOME CONTENT (SEPARATE SECTION) ==========
+  restOfHomeContent: {
+    // This container holds all content that comes after the hero module
   },
   diamondsBonusButton: {
     backgroundColor: '#6642EF',
