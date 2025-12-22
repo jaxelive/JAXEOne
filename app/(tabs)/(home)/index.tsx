@@ -62,6 +62,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [chatDrawerVisible, setChatDrawerVisible] = useState(false);
+  const [topCreators, setTopCreators] = useState<any[]>([]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -77,6 +78,7 @@ export default function HomeScreen() {
     await fetchBattleData();
     await fetchChallengeData();
     await fetchEducationData();
+    await fetchTopCreators();
     setRefreshing(false);
   };
 
@@ -93,6 +95,7 @@ export default function HomeScreen() {
       fetchBattleData();
       fetchChallengeData();
       fetchEducationData();
+      fetchTopCreators();
     }
   }, [creator]);
 
@@ -182,6 +185,27 @@ export default function HomeScreen() {
       setEducationProgress(completedVideos);
     } catch (error: any) {
       console.error('[HomeScreen] Unexpected error fetching education data:', error);
+    }
+  };
+
+  const fetchTopCreators = async () => {
+    try {
+      // Fetch top 3 creators by total_diamonds
+      const { data: topCreatorsData, error: topCreatorsError } = await supabase
+        .from('creators')
+        .select('creator_handle, total_diamonds, avatar_url, profile_picture_url')
+        .eq('is_active', true)
+        .order('total_diamonds', { ascending: false })
+        .limit(3);
+
+      if (topCreatorsError) {
+        console.error('[HomeScreen] Error fetching top creators:', topCreatorsError);
+      } else {
+        console.log('[HomeScreen] Top 3 creators loaded:', topCreatorsData);
+        setTopCreators(topCreatorsData || []);
+      }
+    } catch (error: any) {
+      console.error('[HomeScreen] Unexpected error fetching top creators:', error);
     }
   };
 
@@ -315,7 +339,7 @@ export default function HomeScreen() {
                       <Text style={styles.regionBadgeText}>{region}</Text>
                     </View>
                     <View style={styles.regionBadge}>
-                      <Text style={styles.regionBadgeText}>{currentTier}</Text>
+                      <Text style={styles.regionBadgeText}>Creator</Text>
                     </View>
                   </View>
                 </View>
@@ -426,9 +450,6 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
 
-            {/* EXTRA SPACING TO SHOW BONUS CARD FULLY */}
-            <View style={{ height: 40 }} />
-
             {/* 21-DAY CHALLENGE CARD */}
             <CardPressable onPress={() => router.push('/(tabs)/challenge-list')}>
               <View style={styles.darkCard}>
@@ -453,6 +474,16 @@ export default function HomeScreen() {
                 </View>
 
                 <Text style={styles.cardTitle}>21-Day Challenge</Text>
+
+                {/* Start Challenge Button - Moved to top */}
+                {challengeProgress && challengeProgress.completedDays === 0 && (
+                  <TouchableOpacity 
+                    style={styles.startChallengeButton}
+                    onPress={() => router.push('/(tabs)/challenge-list')}
+                  >
+                    <Text style={styles.startChallengeButtonText}>Start Challenge</Text>
+                  </TouchableOpacity>
+                )}
 
                 {/* Challenge Days */}
                 {challengeProgress && (
@@ -504,18 +535,49 @@ export default function HomeScreen() {
                     color="#FFFFFF" 
                   />
                 </TouchableOpacity>
-
-                {/* Start Challenge Button */}
-                {challengeProgress && challengeProgress.completedDays === 0 && (
-                  <TouchableOpacity 
-                    style={styles.startChallengeButton}
-                    onPress={() => router.push('/(tabs)/challenge-list')}
-                  >
-                    <Text style={styles.startChallengeButtonText}>Start Challenge</Text>
-                  </TouchableOpacity>
-                )}
               </View>
             </CardPressable>
+
+            {/* TOP 3 IN THE NETWORK */}
+            <View style={styles.darkCard}>
+              <Text style={styles.cardTitle}>Top 3 in the Network</Text>
+              <Text style={styles.topCreatorsSubtitle}>Leading creators by diamonds earned</Text>
+              
+              {topCreators.length > 0 ? (
+                topCreators.map((topCreator, index) => (
+                  <View key={index} style={styles.topCreatorRow}>
+                    <View style={styles.topCreatorRank}>
+                      <Text style={styles.topCreatorRankText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.topCreatorAvatar}>
+                      {topCreator.avatar_url || topCreator.profile_picture_url ? (
+                        <Image
+                          source={{ uri: topCreator.avatar_url || topCreator.profile_picture_url }}
+                          style={styles.topCreatorAvatarImage}
+                        />
+                      ) : (
+                        <View style={styles.topCreatorAvatarPlaceholder}>
+                          <IconSymbol
+                            ios_icon_name="person.fill"
+                            android_material_icon_name="person"
+                            size={20}
+                            color="#A0A0A0"
+                          />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.topCreatorInfo}>
+                      <Text style={styles.topCreatorHandle}>@{topCreator.creator_handle}</Text>
+                      <Text style={styles.topCreatorDiamonds}>
+                        {topCreator.total_diamonds.toLocaleString()} diamonds
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noDataText}>No data available</Text>
+              )}
+            </View>
 
             {/* ACADEMY CARD */}
             <CardPressable onPress={() => router.push('/(tabs)/academy')}>
@@ -1004,6 +1066,18 @@ const styles = StyleSheet.create({
   },
 
   // 21-DAY CHALLENGE
+  startChallengeButton: {
+    backgroundColor: '#6642EF',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  startChallengeButtonText: {
+    fontSize: 15,
+    fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
+  },
   challengeDays: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1055,23 +1129,78 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
   },
   continueButtonText: {
     fontSize: 15,
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
-  startChallengeButton: {
-    backgroundColor: '#6642EF',
+
+  // TOP 3 IN THE NETWORK
+  topCreatorsSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: '#A0A0A0',
+    marginBottom: 20,
+  },
+  topCreatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+  },
+  topCreatorRank: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    padding: 16,
+    backgroundColor: '#6642EF',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  startChallengeButtonText: {
-    fontSize: 15,
+  topCreatorRankText: {
+    fontSize: 16,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
+  },
+  topCreatorAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  topCreatorAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  topCreatorAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#2A2A2A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topCreatorInfo: {
+    flex: 1,
+  },
+  topCreatorHandle: {
+    fontSize: 16,
+    fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  topCreatorDiamonds: {
+    fontSize: 13,
+    fontFamily: 'Poppins_500Medium',
+    color: '#A0A0A0',
+  },
+  noDataText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: '#A0A0A0',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
 
   // ACADEMY CARD

@@ -172,7 +172,7 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
         <View style={styles.diamondsHeader}>
           <View style={styles.diamondsTopLeft}>
             <AnimatedNumber 
-              value={data.diamondsEarned || 15000}
+              value={data.diamondsEarned || 0}
               style={styles.diamondsNumberTopLeft}
             />
             <Text style={styles.diamondsLabelSmall}>Diamonds</Text>
@@ -190,7 +190,7 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
             <View style={styles.remainingTextRow}>
               <Text style={styles.remainingText}>Remaining: </Text>
               <AnimatedNumber 
-                value={data.remaining || 185000}
+                value={data.remaining || 0}
                 style={styles.remainingText}
               />
             </View>
@@ -213,7 +213,7 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
           </View>
           <View style={styles.goalRow}>
             <AnimatedNumber 
-              value={data.totalGoal || 200000}
+              value={data.totalGoal || 0}
               style={styles.goalValue}
             />
             <Text style={styles.goalValueHighlight}>{data.nextTier || 'Silver'}</Text>

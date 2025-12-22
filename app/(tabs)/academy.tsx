@@ -68,7 +68,6 @@ export default function AcademyScreen() {
   const [videoProgress, setVideoProgress] = useState<VideoProgress[]>([]);
   const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [topCreators, setTopCreators] = useState<any[]>([]);
 
   useEffect(() => {
     fetchAcademyData();
@@ -142,20 +141,6 @@ export default function AcademyScreen() {
       });
 
       setQuizAttempts(latestAttempts);
-
-      // Fetch top 5 creators by diamonds
-      const { data: topCreatorsData, error: topCreatorsError } = await supabase
-        .from('creators')
-        .select('creator_handle, total_diamonds, avatar_url, profile_picture_url')
-        .eq('is_active', true)
-        .order('total_diamonds', { ascending: false })
-        .limit(5);
-
-      if (topCreatorsError) {
-        console.error('Error fetching top creators:', topCreatorsError);
-      } else {
-        setTopCreators(topCreatorsData || []);
-      }
     } catch (error: any) {
       console.error('Error fetching academy data:', error);
       Alert.alert('Error', 'Failed to load academy content');
@@ -206,9 +191,16 @@ export default function AcademyScreen() {
     }
 
     if (item.content_type === 'video' && item.video) {
-      // Videos are now played on the same screen - no navigation
-      // This will be handled by the video player component below
-      return;
+      // Navigate to video player page
+      router.push({
+        pathname: '/(tabs)/video-player',
+        params: { 
+          videoId: item.video.id,
+          videoUrl: item.video.video_url,
+          title: item.video.title,
+          description: item.video.description || '',
+        },
+      });
     } else if (item.content_type === 'quiz' && item.quiz) {
       // Navigate to quiz (placeholder for now)
       Alert.alert('Quiz', `Starting quiz: ${item.quiz.title}\n\nQuiz would open here.`);
@@ -326,7 +318,7 @@ export default function AcademyScreen() {
           </View>
         </View>
 
-        {/* Content List */}
+        {/* Content List - Videos with Thumbnails */}
         <View style={styles.contentList}>
           {contentItems.map((item, index) => {
             const isUnlocked = isItemUnlocked(index);
@@ -344,37 +336,74 @@ export default function AcademyScreen() {
                 disabled={!isUnlocked}
                 activeOpacity={0.7}
               >
-                <View style={styles.contentIcon}>
-                  {isCompleted ? (
-                    <IconSymbol
-                      ios_icon_name="checkmark.circle.fill"
-                      android_material_icon_name="check-circle"
-                      size={40}
-                      color={colors.success}
-                    />
-                  ) : !isUnlocked ? (
-                    <IconSymbol
-                      ios_icon_name="lock.fill"
-                      android_material_icon_name="lock"
-                      size={32}
-                      color="#707070"
-                    />
-                  ) : item.content_type === 'video' ? (
-                    <IconSymbol
-                      ios_icon_name="play.circle.fill"
-                      android_material_icon_name="play-circle"
-                      size={40}
-                      color={colors.primary}
-                    />
-                  ) : (
-                    <IconSymbol
-                      ios_icon_name="doc.text.fill"
-                      android_material_icon_name="quiz"
-                      size={40}
-                      color={colors.primary}
-                    />
-                  )}
-                </View>
+                {/* Video Thumbnail */}
+                {item.content_type === 'video' && item.video && (
+                  <View style={styles.videoThumbnailContainer}>
+                    {item.video.thumbnail_url ? (
+                      <Image
+                        source={{ uri: item.video.thumbnail_url }}
+                        style={styles.videoThumbnailImage}
+                      />
+                    ) : (
+                      <View style={styles.videoThumbnailPlaceholder}>
+                        <IconSymbol
+                          ios_icon_name="play.circle.fill"
+                          android_material_icon_name="play-circle"
+                          size={40}
+                          color={isUnlocked ? colors.primary : '#707070'}
+                        />
+                      </View>
+                    )}
+                    {!isUnlocked && (
+                      <View style={styles.lockedOverlay}>
+                        <IconSymbol
+                          ios_icon_name="lock.fill"
+                          android_material_icon_name="lock"
+                          size={24}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    )}
+                    {isCompleted && (
+                      <View style={styles.completedBadge}>
+                        <IconSymbol
+                          ios_icon_name="checkmark.circle.fill"
+                          android_material_icon_name="check-circle"
+                          size={24}
+                          color={colors.success}
+                        />
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Quiz Icon */}
+                {item.content_type === 'quiz' && (
+                  <View style={styles.contentIcon}>
+                    {isCompleted ? (
+                      <IconSymbol
+                        ios_icon_name="checkmark.circle.fill"
+                        android_material_icon_name="check-circle"
+                        size={40}
+                        color={colors.success}
+                      />
+                    ) : !isUnlocked ? (
+                      <IconSymbol
+                        ios_icon_name="lock.fill"
+                        android_material_icon_name="lock"
+                        size={32}
+                        color="#707070"
+                      />
+                    ) : (
+                      <IconSymbol
+                        ios_icon_name="doc.text.fill"
+                        android_material_icon_name="quiz"
+                        size={40}
+                        color={colors.primary}
+                      />
+                    )}
+                  </View>
+                )}
 
                 <View style={styles.contentInfo}>
                   <View style={styles.contentHeader}>
@@ -398,6 +427,11 @@ export default function AcademyScreen() {
                       numberOfLines={2}
                     >
                       {item.video.description}
+                    </Text>
+                  )}
+                  {item.content_type === 'video' && item.video?.duration_seconds && (
+                    <Text style={styles.videoDuration}>
+                      {Math.floor(item.video.duration_seconds / 60)} min
                     </Text>
                   )}
                   {item.content_type === 'quiz' && item.quiz?.description && (
@@ -426,43 +460,6 @@ export default function AcademyScreen() {
               </TouchableOpacity>
             );
           })}
-        </View>
-
-        {/* Top 5 in the Network */}
-        <View style={styles.topCreatorsCard}>
-          <Text style={styles.topCreatorsTitle}>Top 5 in the Network</Text>
-          <Text style={styles.topCreatorsSubtitle}>Leading creators by diamonds earned</Text>
-          
-          {topCreators.map((creator, index) => (
-            <View key={index} style={styles.topCreatorRow}>
-              <View style={styles.topCreatorRank}>
-                <Text style={styles.topCreatorRankText}>{index + 1}</Text>
-              </View>
-              <View style={styles.topCreatorAvatar}>
-                {creator.avatar_url || creator.profile_picture_url ? (
-                  <Image
-                    source={{ uri: creator.avatar_url || creator.profile_picture_url }}
-                    style={styles.topCreatorAvatarImage}
-                  />
-                ) : (
-                  <View style={styles.topCreatorAvatarPlaceholder}>
-                    <IconSymbol
-                      ios_icon_name="person.fill"
-                      android_material_icon_name="person"
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                  </View>
-                )}
-              </View>
-              <View style={styles.topCreatorInfo}>
-                <Text style={styles.topCreatorHandle}>@{creator.creator_handle}</Text>
-                <Text style={styles.topCreatorDiamonds}>
-                  {creator.total_diamonds.toLocaleString()} diamonds
-                </Text>
-              </View>
-            </View>
-          ))}
         </View>
 
         {/* Info Card */}
@@ -646,6 +643,39 @@ const styles = StyleSheet.create({
   contentCardLocked: {
     opacity: 0.5,
   },
+  videoThumbnailContainer: {
+    width: 120,
+    height: 80,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  videoThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoThumbnailPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.grey,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
   contentIcon: {
     width: 48,
     height: 48,
@@ -687,85 +717,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
     lineHeight: 20,
+    marginBottom: 4,
   },
   contentDescriptionLocked: {
     color: colors.textTertiary,
+  },
+  videoDuration: {
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.primary,
   },
   contentArrow: {
     width: 24,
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  topCreatorsCard: {
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 20,
-  },
-  topCreatorsTitle: {
-    fontSize: 20,
-    fontFamily: 'Poppins_700Bold',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  topCreatorsSubtitle: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: colors.textSecondary,
-    marginBottom: 20,
-  },
-  topCreatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  topCreatorRank: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topCreatorRankText: {
-    fontSize: 16,
-    fontFamily: 'Poppins_700Bold',
-    color: '#FFFFFF',
-  },
-  topCreatorAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  topCreatorAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  topCreatorAvatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.grey,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topCreatorInfo: {
-    flex: 1,
-  },
-  topCreatorHandle: {
-    fontSize: 16,
-    fontFamily: 'Poppins_700Bold',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  topCreatorDiamonds: {
-    fontSize: 13,
-    fontFamily: 'Poppins_500Medium',
-    color: colors.textSecondary,
   },
   infoCard: {
     flexDirection: 'row',
