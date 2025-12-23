@@ -35,8 +35,8 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
     const requirementsPercentage = (requirementsMet / 3) * 100;
 
     return (
-      <View style={styles.cardWrapper}>
-        <Animated.View style={[styles.card, cardStyle]}>
+      <View style={styles.cardWrapperBonus}>
+        <Animated.View style={[styles.cardBonus, cardStyle]}>
           {/* Header */}
           <View style={styles.bonusHeader}>
             <Text style={styles.bonusTitle}>BONUS FORECAST</Text>
@@ -228,6 +228,7 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
 export default RotatingCard;
 
 const styles = StyleSheet.create({
+  // Diamonds card wrapper - fixed height
   cardWrapper: {
     height: 380,
   },
@@ -237,6 +238,17 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     height: 380,
+  },
+
+  // Bonus card wrapper - content-driven height (auto)
+  cardWrapperBonus: {
+    width: '100%',
+  },
+  cardBonus: {
+    backgroundColor: '#6642EF',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
   },
 
   // Bonus Card Styles
