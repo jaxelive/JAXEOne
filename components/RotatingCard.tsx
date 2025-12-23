@@ -59,7 +59,7 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
                 <IconSymbol 
                   ios_icon_name="checkmark" 
                   android_material_icon_name="check" 
-                  size={32} 
+                  size={24} 
                   color="#FFFFFF" 
                 />
               </View>
@@ -83,10 +83,10 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
           {/* Progress Bar */}
           <AnimatedProgressBar
             percentage={requirementsPercentage}
-            height={12}
+            height={8}
             backgroundColor="rgba(255, 255, 255, 0.2)"
             fillColor="rgba(255, 255, 255, 0.9)"
-            containerStyle={{ marginBottom: 24 }}
+            containerStyle={{ marginBottom: 12 }}
           />
 
           {/* Requirements */}
@@ -107,7 +107,7 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
                     <IconSymbol 
                       ios_icon_name="checkmark" 
                       android_material_icon_name="check" 
-                      size={14} 
+                      size={12} 
                       color="#10B981" 
                     />
                   </View>
@@ -148,7 +148,7 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
                     <IconSymbol 
                       ios_icon_name="checkmark" 
                       android_material_icon_name="check" 
-                      size={14} 
+                      size={12} 
                       color="#10B981" 
                     />
                   </View>
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   cardBonus: {
     backgroundColor: '#6642EF',
     borderRadius: 24,
-    padding: 24,
+    padding: 16,
     width: '100%',
   },
 
@@ -256,10 +256,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   bonusTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: 'Poppins_700Bold',
     color: 'rgba(255, 255, 255, 0.9)',
     letterSpacing: 1,
@@ -268,47 +268,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 20,
-    gap: 6,
+    gap: 4,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#10B981',
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 9,
     fontFamily: 'Poppins_600SemiBold',
     color: 'rgba(255, 255, 255, 0.8)',
     letterSpacing: 0.5,
   },
   statusValue: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
   },
   mainAmountSection: {
-    marginBottom: 32,
+    marginBottom: 16,
   },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginBottom: 8,
+    gap: 12,
+    marginBottom: 4,
   },
   mainAmount: {
-    fontSize: 72,
+    fontSize: 52,
     fontFamily: 'Poppins_800ExtraBold',
     color: '#FFFFFF',
-    letterSpacing: -3,
+    letterSpacing: -2,
   },
   checkCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   earnedLabel: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: 'Poppins_500Medium',
     color: 'rgba(255, 255, 255, 0.9)',
   },
@@ -324,10 +324,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   nextBonusLabel: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     letterSpacing: 0.5,
@@ -337,53 +337,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   requirementsText: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: 'Poppins_500Medium',
     color: 'rgba(255, 255, 255, 0.9)',
   },
   requirementsContainer: {
-    gap: 16,
+    gap: 10,
   },
   requirementRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
   },
   requirementLabel: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   requirementValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   requirementTextRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   requirementText: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
   },
   checkmarkSmall: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   emptyCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
