@@ -268,10 +268,19 @@ export default function HomeScreen() {
           });
           console.log('[HomeScreen] User rank (fallback):', rank, '/', allCreators.length);
         }
-      } else if (rankData) {
+      } else if (rankData && Array.isArray(rankData) && rankData.length > 0) {
+        // RPC returns an array, get the first result
+        const rankResult = rankData[0];
         setUserRank({
-          rank: rankData.rank || 1,
-          total_creators: rankData.total_creators || 1
+          rank: Number(rankResult.rank) || 1,
+          total_creators: Number(rankResult.total_creators) || 1
+        });
+        console.log('[HomeScreen] User rank:', rankResult);
+      } else if (rankData && !Array.isArray(rankData)) {
+        // Handle case where it returns a single object
+        setUserRank({
+          rank: Number(rankData.rank) || 1,
+          total_creators: Number(rankData.total_creators) || 1
         });
         console.log('[HomeScreen] User rank:', rankData);
       }
