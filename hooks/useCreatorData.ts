@@ -2,6 +2,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/app/integrations/supabase/client';
 
+export interface ManagerData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  avatar_url: string | null;
+  username: string | null;
+  whatsapp: string | null;
+  role: string;
+}
+
 export interface CreatorData {
   id: string;
   first_name: string;
@@ -24,6 +35,7 @@ export interface CreatorData {
   gold_target: number | null;
   assigned_manager_id: string | null;
   is_active: boolean;
+  manager?: ManagerData | null;
 }
 
 export interface CreatorStats {
@@ -51,10 +63,25 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       setLoading(true);
       setError(null);
 
-      // Build the query
+      // Build the query to fetch creator with manager data
       const query = supabase
         .from('creators')
-        .select('*')
+        .select(`
+          *,
+          managers:assigned_manager_id (
+            id,
+            whatsapp,
+            users:user_id (
+              id,
+              first_name,
+              last_name,
+              email,
+              avatar_url,
+              username,
+              role
+            )
+          )
+        `)
         .eq('is_active', true)
         .eq('creator_handle', creatorHandle)
         .limit(1);
@@ -79,16 +106,41 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       }
 
       if (data && data.length > 0) {
-        const creatorData = data[0] as CreatorData;
+        const creatorData = data[0] as any;
+        
+        // Transform manager data if it exists
+        let managerData: ManagerData | null = null;
+        if (creatorData.managers && creatorData.managers.users) {
+          const managerUser = creatorData.managers.users;
+          managerData = {
+            id: managerUser.id,
+            first_name: managerUser.first_name,
+            last_name: managerUser.last_name,
+            email: managerUser.email,
+            avatar_url: managerUser.avatar_url,
+            username: managerUser.username,
+            whatsapp: creatorData.managers.whatsapp,
+            role: managerUser.role,
+          };
+        }
+
+        const transformedCreator: CreatorData = {
+          ...creatorData,
+          manager: managerData,
+        };
+
         console.log('[useCreatorData] Creator data loaded:', {
-          handle: creatorData.creator_handle,
-          name: `${creatorData.first_name} ${creatorData.last_name}`,
-          diamonds: creatorData.total_diamonds,
-          monthlyDiamonds: creatorData.diamonds_monthly,
-          liveDays: creatorData.live_days_30d,
-          liveHours: Math.floor(creatorData.live_duration_seconds_30d / 3600)
+          handle: transformedCreator.creator_handle,
+          name: `${transformedCreator.first_name} ${transformedCreator.last_name}`,
+          diamonds: transformedCreator.total_diamonds,
+          monthlyDiamonds: transformedCreator.diamonds_monthly,
+          liveDays: transformedCreator.live_days_30d,
+          liveHours: Math.floor(transformedCreator.live_duration_seconds_30d / 3600),
+          hasManager: !!managerData,
+          managerName: managerData ? `${managerData.first_name} ${managerData.last_name}` : 'None'
         });
-        setCreator(creatorData);
+        
+        setCreator(transformedCreator);
         setError(null);
       } else {
         console.warn('[useCreatorData] No creator data found for handle:', creatorHandle);

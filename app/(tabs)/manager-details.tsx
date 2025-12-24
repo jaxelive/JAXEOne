@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,24 +9,29 @@ import {
   Image,
   Linking,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { supabase } from '@/app/integrations/supabase/client';
 
-// TEMPORARY DATA - Ivan Martinez
-const TEMP_MANAGER = {
-  firstName: 'Ivan',
-  lastName: 'Martinez',
-  role: 'Creator Manager',
-  email: 'ivan@jaxe.co',
-  whatsapp: '+1 (305) 555-0199',
-  tiktok: '@ivan.jaxe',
-  profilePhoto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop',
-};
+interface ManagerData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  avatar_url: string | null;
+  username: string | null;
+  whatsapp: string | null;
+  role: string;
+}
 
 export default function ManagerDetailsScreen() {
+  const params = useLocalSearchParams();
+  const managerId = params.managerId as string;
+
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -34,30 +39,145 @@ export default function ManagerDetailsScreen() {
     Poppins_700Bold,
   });
 
+  const [manager, setManager] = useState<ManagerData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (managerId) {
+      fetchManagerData();
+    }
+  }, [managerId]);
+
+  const fetchManagerData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('[ManagerDetails] Fetching manager data for ID:', managerId);
+
+      // Fetch manager with user data
+      const { data, error: fetchError } = await supabase
+        .from('managers')
+        .select(`
+          id,
+          whatsapp,
+          users:user_id (
+            id,
+            first_name,
+            last_name,
+            email,
+            avatar_url,
+            username,
+            role
+          )
+        `)
+        .eq('id', managerId)
+        .single();
+
+      if (fetchError) {
+        console.error('[ManagerDetails] Fetch error:', fetchError);
+        setError(fetchError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data && data.users) {
+        const managerData: ManagerData = {
+          id: data.users.id,
+          first_name: data.users.first_name,
+          last_name: data.users.last_name,
+          email: data.users.email,
+          avatar_url: data.users.avatar_url,
+          username: data.users.username,
+          whatsapp: data.whatsapp,
+          role: data.users.role,
+        };
+
+        console.log('[ManagerDetails] Manager data loaded:', managerData);
+        setManager(managerData);
+      } else {
+        setError('Manager not found');
+      }
+    } catch (err: any) {
+      console.error('[ManagerDetails] Unexpected error:', err);
+      setError(err?.message || 'Failed to fetch manager data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleTikTokPress = () => {
-    const url = `https://www.tiktok.com/${TEMP_MANAGER.tiktok}`;
+    if (!manager?.username) {
+      Alert.alert('Info', 'TikTok handle not available');
+      return;
+    }
+    const url = `https://www.tiktok.com/@${manager.username}`;
     Linking.openURL(url).catch(() => {
       Alert.alert('Error', 'Could not open TikTok');
     });
   };
 
   const handleEmailPress = () => {
-    Linking.openURL(`mailto:${TEMP_MANAGER.email}`).catch(() => {
+    if (!manager?.email) {
+      Alert.alert('Info', 'Email not available');
+      return;
+    }
+    Linking.openURL(`mailto:${manager.email}`).catch(() => {
       Alert.alert('Error', 'Could not open email app');
     });
   };
 
   const handleWhatsAppPress = () => {
-    const phoneNumber = TEMP_MANAGER.whatsapp.replace(/[^0-9]/g, '');
+    if (!manager?.whatsapp) {
+      Alert.alert('Info', 'WhatsApp number not available');
+      return;
+    }
+    const phoneNumber = manager.whatsapp.replace(/[^0-9]/g, '');
     const url = `https://wa.me/${phoneNumber}`;
     Linking.openURL(url).catch(() => {
       Alert.alert('Error', 'Could not open WhatsApp');
     });
   };
 
-  if (!fontsLoaded) {
-    return null;
+  if (!fontsLoaded || loading) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: 'Manager Details',
+            headerShown: true,
+            headerStyle: { backgroundColor: colors.background },
+            headerTintColor: colors.text,
+          }}
+        />
+        <View style={[styles.container, styles.centerContent]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading manager details...</Text>
+        </View>
+      </>
+    );
   }
+
+  if (error || !manager) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: 'Manager Details',
+            headerShown: true,
+            headerStyle: { backgroundColor: colors.background },
+            headerTintColor: colors.text,
+          }}
+        />
+        <View style={[styles.container, styles.centerContent]}>
+          <Text style={styles.errorText}>{error || 'Manager not found'}</Text>
+        </View>
+      </>
+    );
+  }
+
+  const profileImageUrl = manager.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop';
 
   return (
     <>
@@ -74,18 +194,20 @@ export default function ManagerDetailsScreen() {
         <View style={styles.profileCard}>
           <View style={styles.profileImageContainer}>
             <Image
-              source={{ uri: TEMP_MANAGER.profilePhoto }}
+              source={{ uri: profileImageUrl }}
               style={styles.profileImage}
             />
             <View style={styles.onlineIndicator} />
           </View>
 
           <Text style={styles.managerName}>
-            {TEMP_MANAGER.firstName} {TEMP_MANAGER.lastName}
+            {manager.first_name} {manager.last_name}
           </Text>
 
           <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>{TEMP_MANAGER.role.toUpperCase()}</Text>
+            <Text style={styles.roleBadgeText}>
+              {manager.role === 'manager' ? 'CREATOR MANAGER' : manager.role.toUpperCase()}
+            </Text>
           </View>
         </View>
 
@@ -94,26 +216,28 @@ export default function ManagerDetailsScreen() {
           <Text style={styles.sectionTitle}>Contact Options</Text>
 
           {/* TikTok */}
-          <TouchableOpacity style={styles.contactCard} onPress={handleTikTokPress}>
-            <View style={styles.contactIconContainer}>
+          {manager.username && (
+            <TouchableOpacity style={styles.contactCard} onPress={handleTikTokPress}>
+              <View style={styles.contactIconContainer}>
+                <IconSymbol
+                  ios_icon_name="music.note"
+                  android_material_icon_name="music-note"
+                  size={24}
+                  color={colors.primary}
+                />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactLabel}>TikTok</Text>
+                <Text style={styles.contactValue}>@{manager.username}</Text>
+              </View>
               <IconSymbol
-                ios_icon_name="music.note"
-                android_material_icon_name="music-note"
-                size={24}
-                color={colors.primary}
+                ios_icon_name="chevron.right"
+                android_material_icon_name="chevron-right"
+                size={20}
+                color={colors.textTertiary}
               />
-            </View>
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactLabel}>TikTok</Text>
-              <Text style={styles.contactValue}>{TEMP_MANAGER.tiktok}</Text>
-            </View>
-            <IconSymbol
-              ios_icon_name="chevron.right"
-              android_material_icon_name="chevron-right"
-              size={20}
-              color={colors.textTertiary}
-            />
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
 
           {/* Email */}
           <TouchableOpacity style={styles.contactCard} onPress={handleEmailPress}>
@@ -127,7 +251,7 @@ export default function ManagerDetailsScreen() {
             </View>
             <View style={styles.contactInfo}>
               <Text style={styles.contactLabel}>Email</Text>
-              <Text style={styles.contactValue}>{TEMP_MANAGER.email}</Text>
+              <Text style={styles.contactValue}>{manager.email}</Text>
             </View>
             <IconSymbol
               ios_icon_name="chevron.right"
@@ -138,26 +262,28 @@ export default function ManagerDetailsScreen() {
           </TouchableOpacity>
 
           {/* WhatsApp */}
-          <TouchableOpacity style={styles.contactCard} onPress={handleWhatsAppPress}>
-            <View style={styles.contactIconContainer}>
+          {manager.whatsapp && (
+            <TouchableOpacity style={styles.contactCard} onPress={handleWhatsAppPress}>
+              <View style={styles.contactIconContainer}>
+                <IconSymbol
+                  ios_icon_name="message.fill"
+                  android_material_icon_name="chat"
+                  size={24}
+                  color={colors.primary}
+                />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactLabel}>WhatsApp</Text>
+                <Text style={styles.contactValue}>{manager.whatsapp}</Text>
+              </View>
               <IconSymbol
-                ios_icon_name="message.fill"
-                android_material_icon_name="chat"
-                size={24}
-                color={colors.primary}
+                ios_icon_name="chevron.right"
+                android_material_icon_name="chevron-right"
+                size={20}
+                color={colors.textTertiary}
               />
-            </View>
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactLabel}>WhatsApp</Text>
-              <Text style={styles.contactValue}>{TEMP_MANAGER.whatsapp}</Text>
-            </View>
-            <IconSymbol
-              ios_icon_name="chevron.right"
-              android_material_icon_name="chevron-right"
-              size={20}
-              color={colors.textTertiary}
-            />
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Info Card */}
@@ -181,6 +307,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.textSecondary,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.error,
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
   content: {
     padding: 20,

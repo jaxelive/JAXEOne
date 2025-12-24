@@ -109,7 +109,9 @@ export default function HomeScreen() {
         monthlyDiamonds: creator.diamonds_monthly,
         totalDiamonds: creator.total_diamonds,
         liveDays: creator.live_days_30d,
-        liveHours: Math.floor(creator.live_duration_seconds_30d / 3600)
+        liveHours: Math.floor(creator.live_duration_seconds_30d / 3600),
+        hasManager: !!creator.manager,
+        managerName: creator.manager ? `${creator.manager.first_name} ${creator.manager.last_name}` : 'None'
       });
       fetchBattleData();
       fetchChallengeData();
@@ -228,6 +230,14 @@ export default function HomeScreen() {
     }
   };
 
+  const handleManagerCardPress = () => {
+    if (creator?.assigned_manager_id) {
+      router.push(`/(tabs)/manager-details?managerId=${creator.assigned_manager_id}` as any);
+    } else {
+      console.log('No manager assigned - show request manager flow');
+    }
+  };
+
   if (loading || !fontsLoaded) {
     return (
       <>
@@ -287,6 +297,10 @@ export default function HomeScreen() {
   const challengePercentage = challengeProgress 
     ? (challengeProgress.completedDays / challengeProgress.totalDays) * 100 
     : 0;
+
+  // Manager data
+  const manager = creator.manager;
+  const managerProfileUrl = manager?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop';
 
   return (
     <>
@@ -668,31 +682,48 @@ export default function HomeScreen() {
                 </View>
               </CardPressable>
 
-              {/* MANAGER CARD - TEMPORARY DATA */}
-              <CardPressable onPress={() => router.push('/(tabs)/manager-details')}>
+              {/* MANAGER CARD - FROM SUPABASE */}
+              <CardPressable onPress={handleManagerCardPress}>
                 <View style={styles.darkCard}>
-                  <View style={styles.managerContent}>
-                    <View style={styles.managerLeft}>
-                      <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop' }}
-                        style={styles.managerAvatar}
-                      />
-                      <View style={styles.managerOnlineIndicator} />
+                  {manager ? (
+                    <View style={styles.managerContent}>
+                      <View style={styles.managerLeft}>
+                        <Image
+                          source={{ uri: managerProfileUrl }}
+                          style={styles.managerAvatar}
+                        />
+                        <View style={styles.managerOnlineIndicator} />
+                      </View>
+                      <View style={styles.managerInfo}>
+                        <Text style={styles.managerLabel}>ASSIGNED MANAGER</Text>
+                        <Text style={styles.managerName}>
+                          {manager.first_name} {manager.last_name}
+                        </Text>
+                        <Text style={styles.managerRole}>
+                          {manager.role === 'manager' ? 'Creator Manager' : manager.role}
+                        </Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.viewManagerButton} 
+                        onPress={handleManagerCardPress}
+                      >
+                        <IconSymbol 
+                          ios_icon_name="person.circle.fill" 
+                          android_material_icon_name="account-circle" 
+                          size={20} 
+                          color="#FFFFFF" 
+                        />
+                      </TouchableOpacity>
                     </View>
-                    <View style={styles.managerInfo}>
-                      <Text style={styles.managerLabel}>ASSIGNED MANAGER</Text>
-                      <Text style={styles.managerName}>Ivan Martinez</Text>
-                      <Text style={styles.managerRole}>Creator Manager</Text>
+                  ) : (
+                    <View style={styles.noManagerContent}>
+                      <Text style={styles.noManagerTitle}>My Manager</Text>
+                      <Text style={styles.noManagerText}>No manager assigned yet</Text>
+                      <TouchableOpacity style={styles.requestManagerButton}>
+                        <Text style={styles.requestManagerButtonText}>Request Manager</Text>
+                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.viewManagerButton} onPress={() => router.push('/(tabs)/manager-details')}>
-                      <IconSymbol 
-                        ios_icon_name="person.circle.fill" 
-                        android_material_icon_name="account-circle" 
-                        size={20} 
-                        color="#FFFFFF" 
-                      />
-                    </TouchableOpacity>
-                  </View>
+                  )}
                 </View>
               </CardPressable>
 
@@ -1356,6 +1387,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  noManagerContent: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  noManagerTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  noManagerText: {
+    fontSize: 15,
+    fontFamily: 'Poppins_400Regular',
+    color: '#A0A0A0',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  requestManagerButton: {
+    backgroundColor: '#6642EF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  requestManagerButtonText: {
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
   },
 
   // VS BATTLE CARD
