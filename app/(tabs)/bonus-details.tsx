@@ -57,7 +57,6 @@ const BONUS_TIERS: BonusTier[] = [
 ];
 
 function getTierFromDiamonds(diamonds: number, region: string): string {
-  // Region-based tier calculation
   const isLatAm = region?.toLowerCase().includes('latin') || region?.toLowerCase().includes('latam');
   
   if (isLatAm) {
@@ -211,41 +210,54 @@ export default function BonusDetailsScreen() {
           </View>
         </View>
 
-        {/* Your Bonus for This Month */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Your bonus for this month</Text>
+        {/* Your Bonus for This Month - INCREASED PROMINENCE */}
+        <View style={styles.bonusCard}>
+          <Text style={styles.bonusCardTitle}>Your bonus for this month</Text>
           
-          <View style={styles.bonusItem}>
-            <View style={styles.bonusItemLeft}>
-              <IconSymbol
-                ios_icon_name="dollarsign.circle.fill"
-                android_material_icon_name="attach-money"
-                size={24}
-                color={colors.primary}
-              />
-              <Text style={styles.bonusItemText}>Base Bonus</Text>
+          {/* BONUS AMOUNT - MUCH LARGER */}
+          <View style={styles.bonusMainSection}>
+            <View style={styles.bonusMainAmountContainer}>
+              <Text style={styles.bonusMainAmount}>$150</Text>
+              <Text style={styles.bonusMainLabel}>Total Bonus</Text>
             </View>
-            <Text style={styles.bonusItemValue}>$100</Text>
+            <View style={styles.bonusPayoutRange}>
+              <IconSymbol
+                ios_icon_name="arrow.up.right"
+                android_material_icon_name="trending-up"
+                size={32}
+                color="#10B981"
+              />
+              <Text style={styles.bonusPayoutRangeText}>$100 - $200 range</Text>
+            </View>
           </View>
 
-          <View style={styles.bonusItem}>
-            <View style={styles.bonusItemLeft}>
-              <IconSymbol
-                ios_icon_name="star.fill"
-                android_material_icon_name="star"
-                size={24}
-                color={colors.primary}
-              />
-              <Text style={styles.bonusItemText}>Performance Bonus</Text>
+          {/* Breakdown */}
+          <View style={styles.bonusBreakdown}>
+            <View style={styles.bonusItem}>
+              <View style={styles.bonusItemLeft}>
+                <IconSymbol
+                  ios_icon_name="dollarsign.circle.fill"
+                  android_material_icon_name="attach-money"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={styles.bonusItemText}>Base Bonus</Text>
+              </View>
+              <Text style={styles.bonusItemValue}>$100</Text>
             </View>
-            <Text style={styles.bonusItemValue}>$50</Text>
-          </View>
 
-          <View style={styles.divider} />
-
-          <View style={styles.bonusTotal}>
-            <Text style={styles.bonusTotalLabel}>Total Bonus</Text>
-            <Text style={styles.bonusTotalValue}>$150</Text>
+            <View style={styles.bonusItem}>
+              <View style={styles.bonusItemLeft}>
+                <IconSymbol
+                  ios_icon_name="star.fill"
+                  android_material_icon_name="star"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={styles.bonusItemText}>Performance Bonus</Text>
+              </View>
+              <Text style={styles.bonusItemValue}>$50</Text>
+            </View>
           </View>
         </View>
 
@@ -500,6 +512,83 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -2,
   },
+  
+  // BONUS CARD - INCREASED PROMINENCE
+  bonusCard: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 24,
+    padding: 28,
+    marginBottom: 16,
+  },
+  bonusCardTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  bonusMainSection: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  bonusMainAmountContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  bonusMainAmount: {
+    fontSize: 72,
+    fontFamily: 'Poppins_800ExtraBold',
+    color: colors.primary,
+    letterSpacing: -3,
+    marginBottom: 8,
+  },
+  bonusMainLabel: {
+    fontSize: 20,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+  },
+  bonusPayoutRange: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  bonusPayoutRangeText: {
+    fontSize: 16,
+    fontFamily: 'Poppins_700Bold',
+    color: '#10B981',
+  },
+  bonusBreakdown: {
+    gap: 12,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  bonusItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  bonusItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  bonusItemText: {
+    fontSize: 15,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.text,
+  },
+  bonusItemValue: {
+    fontSize: 16,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
+  },
+  
   card: {
     backgroundColor: colors.backgroundAlt,
     borderRadius: 24,
@@ -523,48 +612,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
     marginBottom: 20,
-  },
-  bonusItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  bonusItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  bonusItemText: {
-    fontSize: 16,
-    fontFamily: 'Poppins_500Medium',
-    color: colors.text,
-  },
-  bonusItemValue: {
-    fontSize: 18,
-    fontFamily: 'Poppins_700Bold',
-    color: colors.text,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 8,
-  },
-  bonusTotal: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 16,
-  },
-  bonusTotalLabel: {
-    fontSize: 18,
-    fontFamily: 'Poppins_700Bold',
-    color: colors.text,
-  },
-  bonusTotalValue: {
-    fontSize: 24,
-    fontFamily: 'Poppins_800ExtraBold',
-    color: colors.primary,
   },
   tierTableCard: {
     backgroundColor: colors.background,

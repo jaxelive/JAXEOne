@@ -19,6 +19,8 @@ interface RotatingCardProps {
     totalGoal?: number;
     remaining?: number;
     nextTier?: string;
+    currentTier?: string;
+    isMaxTier?: boolean;
   };
 }
 
@@ -162,8 +164,9 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
     );
   }
 
-  // Diamonds card - NUMBER MOVED TO TOP-LEFT, NO EMOJI
-  const progressPercentage = ((data.diamondsEarned || 0) / (data.totalGoal || 200000)) * 100;
+  // Diamonds card - with region-based tier logic
+  const isMaxTier = data.isMaxTier || false;
+  const progressPercentage = isMaxTier ? 100 : ((data.diamondsEarned || 0) / (data.totalGoal || 1)) * 100;
 
   return (
     <View style={styles.cardWrapper}>
@@ -179,46 +182,65 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
           </View>
           <View style={styles.tierBadge}>
             <View style={styles.tierDot} />
-            <Text style={styles.tierText}>{data.nextTier || 'Silver'}</Text>
+            <Text style={styles.tierText}>{data.currentTier || 'Rookie'}</Text>
           </View>
         </View>
 
-        {/* Progress Section */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressLabel}>Progress to Goal</Text>
-            <View style={styles.remainingTextRow}>
-              <Text style={styles.remainingText}>Remaining: </Text>
-              <AnimatedNumber 
-                value={data.remaining || 0}
-                style={styles.remainingText}
+        {/* Progress Section or Max Tier Message */}
+        {isMaxTier ? (
+          <View style={styles.maxTierSection}>
+            <View style={styles.maxTierIconContainer}>
+              <IconSymbol 
+                ios_icon_name="crown.fill" 
+                android_material_icon_name="workspace-premium" 
+                size={48} 
+                color="#FFD700" 
               />
             </View>
+            <Text style={styles.maxTierTitle}>Max Tier Reached!</Text>
+            <Text style={styles.maxTierSubtitle}>
+              You&apos;ve achieved the highest tier. Keep up the amazing work!
+            </Text>
           </View>
+        ) : (
+          <>
+            <View style={styles.progressSection}>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressLabel}>Progress to {data.nextTier}</Text>
+                <View style={styles.remainingTextRow}>
+                  <Text style={styles.remainingText}>Remaining: </Text>
+                  <AnimatedNumber 
+                    value={data.remaining || 0}
+                    style={styles.remainingText}
+                  />
+                </View>
+              </View>
 
-          {/* Progress Bar */}
-          <AnimatedProgressBar
-            percentage={progressPercentage}
-            height={12}
-            backgroundColor="rgba(255, 255, 255, 0.2)"
-            fillColor="rgba(255, 255, 255, 0.9)"
-          />
-        </View>
+              {/* Progress Bar */}
+              <AnimatedProgressBar
+                percentage={progressPercentage}
+                height={12}
+                backgroundColor="rgba(255, 255, 255, 0.2)"
+                fillColor="rgba(255, 255, 255, 0.9)"
+              />
+            </View>
 
-        {/* Goal Info */}
-        <View style={styles.goalSection}>
-          <View style={styles.goalRow}>
-            <Text style={styles.goalLabel}>TOTAL GOAL</Text>
-            <Text style={styles.goalLabel}>NEXT TIER</Text>
-          </View>
-          <View style={styles.goalRow}>
-            <AnimatedNumber 
-              value={data.totalGoal || 0}
-              style={styles.goalValue}
-            />
-            <Text style={styles.goalValueHighlight}>{data.nextTier || 'Silver'}</Text>
-          </View>
-        </View>
+            {/* Goal Info */}
+            <View style={styles.goalSection}>
+              <View style={styles.goalRow}>
+                <Text style={styles.goalLabel}>TOTAL GOAL</Text>
+                <Text style={styles.goalLabel}>NEXT TIER</Text>
+              </View>
+              <View style={styles.goalRow}>
+                <AnimatedNumber 
+                  value={data.totalGoal || 0}
+                  style={styles.goalValue}
+                />
+                <Text style={styles.goalValueHighlight}>{data.nextTier || 'Silver'}</Text>
+              </View>
+            </View>
+          </>
+        )}
 
       </Animated.View>
     </View>
@@ -479,5 +501,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Poppins_700Bold',
     color: '#FCD34D',
+  },
+  
+  // Max Tier Section
+  maxTierSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  maxTierIconContainer: {
+    marginBottom: 20,
+  },
+  maxTierTitle: {
+    fontSize: 24,
+    fontFamily: 'Poppins_800ExtraBold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  maxTierSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 20,
   },
 });

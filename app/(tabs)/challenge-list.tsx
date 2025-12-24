@@ -44,6 +44,7 @@ export default function ChallengeListScreen() {
   const [challengeDays, setChallengeDays] = useState<ChallengeDay[]>([]);
   const [progress, setProgress] = useState<DayProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
     fetchChallengeData();
@@ -75,6 +76,7 @@ export default function ChallengeListScreen() {
       }
 
       setProgress(progressData || []);
+      setHasStarted((progressData || []).length > 0);
     } catch (error: any) {
       console.error('Error fetching challenge data:', error);
     } finally {
@@ -89,8 +91,8 @@ export default function ChallengeListScreen() {
       return 'completed';
     }
 
-    // Day 1 is always unlocked
-    if (dayNumber === 1) {
+    // Day 1 is always unlocked if challenge has started
+    if (dayNumber === 1 && hasStarted) {
       return 'unlocked';
     }
 
@@ -103,16 +105,27 @@ export default function ChallengeListScreen() {
     return 'locked';
   };
 
-  const handleDayPress = (day: ChallengeDay) => {
-    const status = getDayStatus(day.day_number);
-    if (status === 'locked') {
-      return;
-    }
+  const handleStartChallenge = async () => {
+    if (!creator) return;
 
-    router.push({
-      pathname: '/(tabs)/challenge-day-details',
-      params: { dayId: day.id, dayNumber: day.day_number.toString() },
-    });
+    try {
+      // Initialize Day 1 as unlocked
+      const { error } = await supabase
+        .from('user_day_progress')
+        .insert({
+          user_id: creator.id,
+          day_number: 1,
+          status: 'unlocked',
+        });
+
+      if (error) throw error;
+
+      // Refresh data
+      await fetchChallengeData();
+    } catch (error: any) {
+      console.error('Error starting challenge:', error);
+      Alert.alert('Error', 'Failed to start challenge');
+    }
   };
 
   const handleMarkComplete = async (day: ChallengeDay, event: any) => {
@@ -139,6 +152,19 @@ export default function ChallengeListScreen() {
         });
 
       if (error) throw error;
+
+      // Unlock next day
+      if (day.day_number < 21) {
+        await supabase
+          .from('user_day_progress')
+          .upsert({
+            user_id: creator.id,
+            day_number: day.day_number + 1,
+            status: 'unlocked',
+          }, {
+            onConflict: 'user_id,day_number',
+          });
+      }
 
       // Refresh data
       await fetchChallengeData();
@@ -195,23 +221,38 @@ export default function ChallengeListScreen() {
           </Text>
         </View>
 
-        {/* Progress Card */}
-        <View style={styles.progressCard}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressLabel}>Your Progress</Text>
-            <Text style={styles.progressValue}>{completedCount}/21 Days</Text>
-          </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
-          </View>
-          <Text style={styles.progressText}>
-            {completedCount === 21
-              ? '🎉 Challenge completed! Amazing work!'
-              : `${21 - completedCount} days remaining`}
-          </Text>
-        </View>
+        {/* Start Challenge Button - Only show if not started */}
+        {!hasStarted && (
+          <TouchableOpacity style={styles.startChallengeButton} onPress={handleStartChallenge}>
+            <Text style={styles.startChallengeButtonText}>Start Challenge</Text>
+            <IconSymbol
+              ios_icon_name="arrow.right"
+              android_material_icon_name="arrow-forward"
+              size={20}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+        )}
 
-        {/* Days List */}
+        {/* Progress Card */}
+        {hasStarted && (
+          <View style={styles.progressCard}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressLabel}>Your Progress</Text>
+              <Text style={styles.progressValue}>{completedCount}/21 Days</Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
+            </View>
+            <Text style={styles.progressText}>
+              {completedCount === 21
+                ? '🎉 Challenge completed! Amazing work!'
+                : `${21 - completedCount} days remaining`}
+            </Text>
+          </View>
+        )}
+
+        {/* Days List - Simplified Layout */}
         <View style={styles.daysContainer}>
           {challengeDays.map((day, index) => {
             const status = getDayStatus(day.day_number);
@@ -220,15 +261,12 @@ export default function ChallengeListScreen() {
 
             return (
               <React.Fragment key={day.id}>
-                <TouchableOpacity
+                <View
                   style={[
                     styles.dayCard,
                     isCompleted && styles.dayCardCompleted,
                     isLocked && styles.dayCardLocked,
                   ]}
-                  onPress={() => handleDayPress(day)}
-                  disabled={isLocked}
-                  activeOpacity={0.7}
                 >
                   <View style={styles.dayCardLeft}>
                     <View
@@ -269,12 +307,14 @@ export default function ChallengeListScreen() {
                         </View>
                       )}
                     </View>
+                    
                     <Text
-                      style={[styles.dayDescription, isLocked && styles.dayDescriptionLocked]}
+                      style={[styles.dayObjective, isLocked && styles.dayObjectiveLocked]}
                       numberOfLines={2}
                     >
-                      {day.description}
+                      {day.objective}
                     </Text>
+                    
                     <View style={styles.dayMeta}>
                       <View style={styles.dayMetaItem}>
                         <IconSymbol
@@ -289,28 +329,23 @@ export default function ChallengeListScreen() {
                       </View>
                     </View>
 
-                    {/* Mark Complete Button */}
+                    {/* Mark Complete Button - Same row */}
                     {!isCompleted && !isLocked && (
                       <TouchableOpacity
                         style={styles.markCompleteButton}
                         onPress={(e) => handleMarkComplete(day, e)}
                       >
                         <Text style={styles.markCompleteButtonText}>Mark Complete</Text>
+                        <IconSymbol
+                          ios_icon_name="checkmark"
+                          android_material_icon_name="check"
+                          size={16}
+                          color="#FFFFFF"
+                        />
                       </TouchableOpacity>
                     )}
                   </View>
-
-                  {!isLocked && (
-                    <View style={styles.dayCardRight}>
-                      <IconSymbol
-                        ios_icon_name="chevron.right"
-                        android_material_icon_name="chevron-right"
-                        size={20}
-                        color="#A0A0A0"
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
+                </View>
 
                 {/* Week Divider */}
                 {(day.day_number === 7 || day.day_number === 14) && (
@@ -372,6 +407,21 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  startChallengeButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 24,
+  },
+  startChallengeButtonText: {
+    fontSize: 18,
+    fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
+  },
   progressCard: {
     backgroundColor: colors.backgroundAlt,
     borderRadius: 24,
@@ -420,7 +470,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundAlt,
     borderRadius: 20,
     padding: 16,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 16,
   },
   dayCardCompleted: {
@@ -461,7 +511,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 6,
+    flexWrap: 'wrap',
   },
   dayTitle: {
     fontSize: 16,
@@ -484,19 +535,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-  dayDescription: {
+  dayObjective: {
     fontSize: 14,
     fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
     marginBottom: 8,
     lineHeight: 20,
   },
-  dayDescriptionLocked: {
+  dayObjectiveLocked: {
     color: colors.textTertiary,
   },
   dayMeta: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 12,
   },
   dayMetaItem: {
     flexDirection: 'row',
@@ -518,21 +570,17 @@ const styles = StyleSheet.create({
   markCompleteButton: {
     backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     alignSelf: 'flex-start',
   },
   markCompleteButtonText: {
     fontSize: 13,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
-  },
-  dayCardRight: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   weekDivider: {
     flexDirection: 'row',

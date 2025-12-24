@@ -25,23 +25,42 @@ import { ChatDrawer } from "@/components/ChatDrawer";
 
 const { width } = Dimensions.get('window');
 
-// Tier calculation function
-function getTierFromDiamonds(diamonds: number): string {
-  if (diamonds >= 10000000) return "Diamond";
-  if (diamonds >= 5000000) return "Platinum";
-  if (diamonds >= 1000000) return "Gold";
-  if (diamonds >= 500000) return "Silver";
-  if (diamonds >= 100000) return "Bronze";
-  return "Rookie";
+// Region-based tier calculation function
+function getTierFromDiamonds(diamonds: number, region: string): string {
+  const isLatAm = region?.toLowerCase().includes('latin') || region?.toLowerCase().includes('latam');
+  
+  if (isLatAm) {
+    if (diamonds >= 300000) return 'Gold';
+    if (diamonds >= 100000) return 'Silver';
+  } else {
+    // USA & Canada
+    if (diamonds >= 500000) return 'Gold';
+    if (diamonds >= 200000) return 'Silver';
+  }
+  
+  return 'Rookie';
 }
 
-function getNextTierInfo(diamonds: number): { tier: string; target: number } {
-  if (diamonds < 100000) return { tier: "Bronze", target: 100000 };
-  if (diamonds < 500000) return { tier: "Silver", target: 500000 };
-  if (diamonds < 1000000) return { tier: "Gold", target: 1000000 };
-  if (diamonds < 5000000) return { tier: "Platinum", target: 5000000 };
-  if (diamonds < 10000000) return { tier: "Diamond", target: 10000000 };
-  return { tier: "Max", target: 10000000 };
+function getNextTierInfo(diamonds: number, region: string): { tier: string; target: number } | null {
+  const isLatAm = region?.toLowerCase().includes('latin') || region?.toLowerCase().includes('latam');
+  
+  if (isLatAm) {
+    if (diamonds < 100000) return { tier: 'Silver', target: 100000 };
+    if (diamonds < 300000) return { tier: 'Gold', target: 300000 };
+  } else {
+    // USA & Canada
+    if (diamonds < 200000) return { tier: 'Silver', target: 200000 };
+    if (diamonds < 500000) return { tier: 'Gold', target: 500000 };
+  }
+  
+  return null; // Max tier reached
+}
+
+// Get checkmark color based on tier
+function getTierCheckmarkColor(tier: string): string {
+  if (tier === 'Gold') return '#FFD700';
+  if (tier === 'Silver') return '#C0C0C0';
+  return '#10B981'; // Rookie green
 }
 
 export default function HomeScreen() {
@@ -251,14 +270,14 @@ export default function HomeScreen() {
 
   const firstName = creator.first_name || creator.creator_handle;
   const profileImageUrl = creator.avatar_url || creator.profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop';
-  const region = creator.region || 'Latin America';
+  const region = creator.region || 'USA & Canada';
 
-  // Calculate tier and next tier from real data
+  // Calculate tier and next tier from real data with region-based logic
   const currentDiamonds = creator.diamonds_monthly || 0;
-  const currentTier = getTierFromDiamonds(currentDiamonds);
-  const nextTierInfo = getNextTierInfo(currentDiamonds);
-  const remaining = Math.max(0, nextTierInfo.target - currentDiamonds);
-  const progress = nextTierInfo.target > 0 ? (currentDiamonds / nextTierInfo.target) * 100 : 0;
+  const currentTier = getTierFromDiamonds(currentDiamonds, region);
+  const nextTierInfo = getNextTierInfo(currentDiamonds, region);
+  const remaining = nextTierInfo ? Math.max(0, nextTierInfo.target - currentDiamonds) : 0;
+  const checkmarkColor = getTierCheckmarkColor(currentTier);
 
   // Calculate live stats
   const liveDays = creator.live_days_30d || 0;
@@ -320,14 +339,18 @@ export default function HomeScreen() {
                   <View style={styles.headerNameRow}>
                     <Text style={styles.headerGreeting}>Welcome back, </Text>
                     <Text style={styles.headerName}>{firstName}</Text>
-                    <View style={styles.goldCheckmark}>
+                    {/* Tier-colored checkmark with navigation */}
+                    <TouchableOpacity 
+                      style={styles.goldCheckmark}
+                      onPress={() => router.push('/tier-explanation' as any)}
+                    >
                       <IconSymbol 
                         ios_icon_name="checkmark.seal.fill" 
                         android_material_icon_name="verified" 
                         size={24} 
-                        color="#FFD700" 
+                        color={checkmarkColor} 
                       />
-                    </View>
+                    </TouchableOpacity>
                   </View>
                   <View style={styles.headerBadges}>
                     <View style={styles.headerBadge}>
@@ -391,9 +414,11 @@ export default function HomeScreen() {
                         onPress={() => {}}
                         data={{
                           diamondsEarned: currentDiamonds,
-                          totalGoal: nextTierInfo.target,
+                          totalGoal: nextTierInfo?.target || 0,
                           remaining: remaining,
-                          nextTier: nextTierInfo.tier,
+                          nextTier: nextTierInfo?.tier || 'Max',
+                          currentTier: currentTier,
+                          isMaxTier: !nextTierInfo,
                         }}
                       />
                     </View>
@@ -412,9 +437,11 @@ export default function HomeScreen() {
                         onPress={() => {}}
                         data={{
                           diamondsEarned: currentDiamonds,
-                          totalGoal: nextTierInfo.target,
+                          totalGoal: nextTierInfo?.target || 0,
                           remaining: remaining,
-                          nextTier: nextTierInfo.tier,
+                          nextTier: nextTierInfo?.tier || 'Max',
+                          currentTier: currentTier,
+                          isMaxTier: !nextTierInfo,
                         }}
                       />
                     </TouchableOpacity>
@@ -455,7 +482,7 @@ export default function HomeScreen() {
                 />
               </TouchableOpacity>
 
-              {/* 21-DAY CHALLENGE CARD */}
+              {/* 21-DAY CHALLENGE CARD - NO START BUTTON */}
               <CardPressable onPress={() => router.push('/(tabs)/challenge-list')}>
                 <View style={styles.darkCard}>
                   <View style={styles.cardHeaderRow}>
@@ -479,16 +506,6 @@ export default function HomeScreen() {
                   </View>
 
                   <Text style={styles.cardTitle}>21-Day Challenge</Text>
-
-                  {/* Start Challenge Button - Moved to top */}
-                  {challengeProgress && challengeProgress.completedDays === 0 && (
-                    <TouchableOpacity 
-                      style={styles.startChallengeButton}
-                      onPress={() => router.push('/(tabs)/challenge-list')}
-                    >
-                      <Text style={styles.startChallengeButtonText}>Start Challenge</Text>
-                    </TouchableOpacity>
-                  )}
 
                   {/* Challenge Days */}
                   {challengeProgress && (
@@ -1082,18 +1099,6 @@ const styles = StyleSheet.create({
   },
 
   // 21-DAY CHALLENGE
-  startChallengeButton: {
-    backgroundColor: '#6642EF',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  startChallengeButtonText: {
-    fontSize: 15,
-    fontFamily: 'Poppins_700Bold',
-    color: '#FFFFFF',
-  },
   challengeDays: {
     flexDirection: 'row',
     justifyContent: 'space-between',
