@@ -387,7 +387,7 @@ export default function HomeScreen() {
               <View style={styles.rotatingCardsContainer}>
                 {activeCardIndex === 0 ? (
                   <>
-                    {/* Back Card (Faded) - Bonus Forecast */}
+                    {/* Back Card (Faded) - Bonus Forecast - HIDDEN HALFWAY */}
                     <TouchableOpacity 
                       style={styles.backCard}
                       onPress={() => setActiveCardIndex(1)}
@@ -1011,7 +1011,7 @@ const styles = StyleSheet.create({
   },
   backCard: {
     position: 'absolute',
-    top: 180,
+    top: 280,
     left: '5%',
     right: '5%',
     zIndex: 1,
