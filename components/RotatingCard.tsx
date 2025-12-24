@@ -104,15 +104,18 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
                   />
                   <Text style={styles.requirementText}> / 15</Text>
                 </View>
-                {liveDaysComplete && (
-                  <View style={styles.checkmarkSmall}>
+                {/* Status Circle Indicator - Always visible */}
+                {liveDaysComplete ? (
+                  <View style={styles.statusCircleComplete}>
                     <IconSymbol 
                       ios_icon_name="checkmark" 
                       android_material_icon_name="check" 
-                      size={12} 
-                      color="#10B981" 
+                      size={14} 
+                      color="#FFFFFF" 
                     />
                   </View>
+                ) : (
+                  <View style={styles.statusCircleEmpty} />
                 )}
               </View>
             </View>
@@ -128,8 +131,18 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
                   />
                   <Text style={styles.requirementText}> / 40</Text>
                 </View>
-                {!liveHoursComplete && (
-                  <View style={styles.emptyCircle} />
+                {/* Status Circle Indicator - Always visible */}
+                {liveHoursComplete ? (
+                  <View style={styles.statusCircleComplete}>
+                    <IconSymbol 
+                      ios_icon_name="checkmark" 
+                      android_material_icon_name="check" 
+                      size={14} 
+                      color="#FFFFFF" 
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.statusCircleEmpty} />
                 )}
               </View>
             </View>
@@ -145,15 +158,18 @@ export function RotatingCard({ type, isFaded = false, onPress, data }: RotatingC
                   />
                   <Text style={styles.requirementText}> / 1</Text>
                 </View>
-                {battlesComplete && (
-                  <View style={styles.checkmarkSmall}>
+                {/* Status Circle Indicator - Always visible */}
+                {battlesComplete ? (
+                  <View style={styles.statusCircleComplete}>
                     <IconSymbol 
                       ios_icon_name="checkmark" 
                       android_material_icon_name="check" 
-                      size={12} 
-                      color="#10B981" 
+                      size={14} 
+                      color="#FFFFFF" 
                     />
                   </View>
+                ) : (
+                  <View style={styles.statusCircleEmpty} />
                 )}
               </View>
             </View>
@@ -383,7 +399,7 @@ const styles = StyleSheet.create({
   requirementValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   requirementTextRow: {
     flexDirection: 'row',
@@ -394,6 +410,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
   },
+  // NEW: Status Circle Indicators (always visible, same space reserved)
+  statusCircleComplete: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusCircleEmpty: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'transparent',
+  },
+  // REMOVED: Old checkmark and empty circle styles
   checkmarkSmall: {
     width: 20,
     height: 20,
