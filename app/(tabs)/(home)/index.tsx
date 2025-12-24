@@ -657,15 +657,13 @@ export default function HomeScreen() {
                         </View>
                         <View style={styles.topCreatorInfo}>
                           <Text style={styles.topCreatorHandle}>@{topCreator.creator_handle}</Text>
-                          <View style={styles.topCreatorMetaRow}>
-                            <Text style={styles.topCreatorDiamonds}>
-                              {topCreator.diamonds_monthly.toLocaleString()} 💎 this month
+                          <Text style={styles.topCreatorDiamonds}>
+                            {topCreator.diamonds_monthly.toLocaleString()} 💎
+                          </Text>
+                          <View style={styles.topCreatorRegionBadge}>
+                            <Text style={styles.topCreatorRegionText}>
+                              {topCreator.region || 'N/A'}
                             </Text>
-                            <View style={styles.topCreatorRegionBadge}>
-                              <Text style={styles.topCreatorRegionText}>
-                                {topCreator.region || 'N/A'}
-                              </Text>
-                            </View>
                           </View>
                         </View>
                       </View>
@@ -1338,21 +1336,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 4,
   },
-  topCreatorMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   topCreatorDiamonds: {
     fontSize: 13,
     fontFamily: 'Poppins_500Medium',
     color: '#A0A0A0',
+    marginBottom: 4,
   },
   topCreatorRegionBadge: {
     backgroundColor: '#2A2A2A',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
+    alignSelf: 'flex-start',
   },
   topCreatorRegionText: {
     fontSize: 10,
