@@ -1358,12 +1358,13 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
   },
-  // IMPORTANT CARD - VISUAL EMPHASIS
+  // IMPORTANT CARD - VISUAL EMPHASIS (ENHANCED)
   importantCard: {
     borderWidth: 2,
-    borderColor: 'rgba(102, 66, 239, 0.3)',
-    boxShadow: '0px 8px 24px rgba(102, 66, 239, 0.2)',
-    elevation: 8,
+    borderColor: 'rgba(102, 66, 239, 0.5)',
+    boxShadow: '0px 10px 30px rgba(102, 66, 239, 0.3)',
+    elevation: 10,
+    backgroundColor: '#1F1F1F',
   },
   cardHeaderRow: {
     flexDirection: 'row',
