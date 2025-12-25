@@ -12,6 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Linking,
 } from "react-native";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -381,6 +382,22 @@ export default function HomeScreen() {
       router.push(`/(tabs)/manager-details?managerId=${creator.assigned_manager_id}` as any);
     } else {
       console.log('No manager assigned - show request manager flow');
+    }
+  };
+
+  const handleTopCreatorPress = async (creatorHandle: string) => {
+    const tiktokUrl = `https://www.tiktok.com/@${creatorHandle}`;
+    console.log('[HomeScreen] Opening TikTok profile:', tiktokUrl);
+    
+    try {
+      const canOpen = await Linking.canOpenURL(tiktokUrl);
+      if (canOpen) {
+        await Linking.openURL(tiktokUrl);
+      } else {
+        console.error('[HomeScreen] Cannot open TikTok URL:', tiktokUrl);
+      }
+    } catch (error) {
+      console.error('[HomeScreen] Error opening TikTok profile:', error);
     }
   };
 
@@ -799,7 +816,12 @@ export default function HomeScreen() {
                 {topCreators.length > 0 ? (
                   <>
                     {topCreators.map((topCreator, index) => (
-                      <View key={index} style={styles.topCreatorRow}>
+                      <TouchableOpacity 
+                        key={index} 
+                        style={styles.topCreatorRow}
+                        onPress={() => handleTopCreatorPress(topCreator.creator_handle)}
+                        activeOpacity={0.7}
+                      >
                         <View style={styles.topCreatorRank}>
                           <Text style={styles.topCreatorRankText}>{index + 1}</Text>
                         </View>
@@ -831,7 +853,13 @@ export default function HomeScreen() {
                             </Text>
                           </View>
                         </View>
-                      </View>
+                        <IconSymbol 
+                          ios_icon_name="chevron.right" 
+                          android_material_icon_name="chevron-right" 
+                          size={20} 
+                          color="#6642EF" 
+                        />
+                      </TouchableOpacity>
                     ))}
 
                     {/* YOUR RANK - PROMINENT SECTION - WITHOUT TOTAL CREATORS */}
