@@ -134,6 +134,10 @@ export default function AcademyScreen() {
         setError(`Events fetch error: ${eventsError.message}`);
       } else {
         console.log('[Academy] Live events found:', eventsData?.length || 0);
+        // Log each event with its hour for debugging
+        eventsData?.forEach((event) => {
+          console.log(`[Academy] Event: ${event.event_name} - Date: ${event.event_date} - Hour: ${event.event_hour}`);
+        });
         setLiveEvents(eventsData || []);
       }
 
