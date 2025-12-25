@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
@@ -89,6 +90,7 @@ export default function AcademyScreen() {
   const [nextTraining, setNextTraining] = useState<LiveTrainingSession | null>(null);
   const [registration, setRegistration] = useState<TrainingRegistration | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -143,12 +145,15 @@ export default function AcademyScreen() {
       setLoading(true);
       setError(null);
 
+      const now = new Date().toISOString();
+      console.log('[Academy] Current time:', now);
+
       // Fetch next live training session
       console.log('[Academy] Fetching live training sessions...');
       const { data: trainingData, error: trainingError } = await supabase
         .from('live_training_sessions')
         .select('*')
-        .gte('scheduled_date', new Date().toISOString())
+        .gte('scheduled_date', now)
         .eq('status', 'scheduled')
         .order('scheduled_date', { ascending: true })
         .limit(1)
@@ -160,7 +165,11 @@ export default function AcademyScreen() {
           setError(`Training fetch error: ${trainingError.message}`);
         }
       } else if (trainingData) {
-        console.log('[Academy] Training session found:', trainingData.id);
+        console.log('[Academy] Training session found:', {
+          id: trainingData.id,
+          title: trainingData.title,
+          scheduled_date: trainingData.scheduled_date,
+        });
         setNextTraining(trainingData);
 
         // Check if user is registered
@@ -183,6 +192,7 @@ export default function AcademyScreen() {
         }
       } else {
         console.log('[Academy] No upcoming training sessions found');
+        setNextTraining(null);
       }
 
       // Fetch course content items with videos and quizzes
@@ -272,8 +282,15 @@ export default function AcademyScreen() {
       setError(`Failed to load academy content: ${error.message}`);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  const onRefresh = useCallback(() => {
+    console.log('[Academy] Manual refresh triggered');
+    setRefreshing(true);
+    fetchAcademyData();
+  }, [currentUserId]);
 
   const handleRegister = async () => {
     if (!nextTraining || !currentUserId || registering) return;
@@ -331,15 +348,29 @@ export default function AcademyScreen() {
     const trainingDate = new Date(nextTraining.scheduled_date);
     const today = new Date();
 
-    return (
+    const isSameDay = (
       trainingDate.getFullYear() === today.getFullYear() &&
       trainingDate.getMonth() === today.getMonth() &&
       trainingDate.getDate() === today.getDate()
     );
+
+    console.log('[Academy] isTrainingToday check:', {
+      trainingDate: trainingDate.toISOString(),
+      today: today.toISOString(),
+      isSameDay,
+    });
+
+    return isSameDay;
   }, [nextTraining]);
 
   const canJoinTraining = useCallback(() => {
-    return registration && isTrainingToday();
+    const result = registration && isTrainingToday();
+    console.log('[Academy] canJoinTraining:', {
+      hasRegistration: !!registration,
+      isToday: isTrainingToday(),
+      canJoin: result,
+    });
+    return result;
   }, [registration, isTrainingToday]);
 
   const formatTrainingDate = (dateString: string) => {
@@ -481,7 +512,18 @@ export default function AcademyScreen() {
           headerTintColor: colors.text,
         }}
       />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         {error && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{error}</Text>
@@ -489,7 +531,7 @@ export default function AcademyScreen() {
         )}
 
         {/* Next LIVE Training Card - Now First and More Prominent */}
-        {nextTraining && (
+        {nextTraining ? (
           <View style={styles.liveTrainingCard}>
             <View style={styles.liveTrainingHeader}>
               <Text style={styles.liveTrainingTitle}>Next LIVE Training</Text>
@@ -581,6 +623,19 @@ export default function AcademyScreen() {
                 Join button will be enabled on the day of training
               </Text>
             )}
+          </View>
+        ) : (
+          <View style={styles.noTrainingCard}>
+            <IconSymbol
+              ios_icon_name="calendar.badge.exclamationmark"
+              android_material_icon_name="event-busy"
+              size={48}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.noTrainingTitle}>No Upcoming Training</Text>
+            <Text style={styles.noTrainingText}>
+              Check back soon for new live training sessions!
+            </Text>
           </View>
         )}
 
@@ -858,6 +913,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 12,
+  },
+  noTrainingCard: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 24,
+    padding: 32,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  noTrainingTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noTrainingText: {
+    fontSize: 15,
+    fontFamily: 'Poppins_400Regular',
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   liveTrainingHeader: {
     flexDirection: 'row',
