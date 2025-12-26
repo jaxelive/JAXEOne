@@ -92,6 +92,7 @@ interface LiveEvent {
   event_date: string;
   event_hour: string;
   region: string | null;
+  time_zone: string | null;
 }
 
 export default function HomeScreen() {
@@ -822,6 +823,14 @@ export default function HomeScreen() {
                         <Text style={styles.compactEventTimeText}>
                           {formatTo12Hour(featuredLiveEvent.event_hour)}
                         </Text>
+                        {featuredLiveEvent.time_zone && (
+                          <>
+                            <Text style={styles.compactEventDivider}>•</Text>
+                            <Text style={styles.compactEventTimezoneText}>
+                              {featuredLiveEvent.time_zone}
+                            </Text>
+                          </>
+                        )}
                       </View>
                     </View>
                   </View>
@@ -1575,6 +1584,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexWrap: 'wrap',
   },
   compactEventDateText: {
     fontSize: 13,
@@ -1589,7 +1599,12 @@ const styles = StyleSheet.create({
   compactEventTimeText: {
     fontSize: 13,
     fontFamily: 'Poppins_500Medium',
-    color: '#CCCCCC',
+    color: '#FFFFFF',
+  },
+  compactEventTimezoneText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_500Medium',
+    color: '#999999',
   },
   compactEventRight: {
     marginLeft: 12,

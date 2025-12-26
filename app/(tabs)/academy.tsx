@@ -75,6 +75,7 @@ interface LiveEvent {
   event_date: string;
   event_hour: string;
   region: string | null;
+  time_zone: string | null;
 }
 
 interface LiveEventRegistration {
@@ -137,7 +138,7 @@ export default function AcademyScreen() {
         console.log('[Academy] Live events found:', eventsData?.length || 0);
         // Log each event with its hour for debugging
         eventsData?.forEach((event) => {
-          console.log(`[Academy] Event: ${event.event_name} - Date: ${event.event_date} - Hour: ${event.event_hour} - Formatted: ${formatTo12Hour(event.event_hour)}`);
+          console.log(`[Academy] Event: ${event.event_name} - Date: ${event.event_date} - Hour: ${event.event_hour} - Time Zone: ${event.time_zone}`);
         });
         setLiveEvents(eventsData || []);
       }
@@ -498,11 +499,18 @@ export default function AcademyScreen() {
                         ios_icon_name="clock"
                         android_material_icon_name="access-time"
                         size={16}
-                        color="#999999"
+                        color={colors.textSecondary}
                       />
-                      <Text style={styles.liveEventTimezoneText}>
-                        {formatTo12Hour(event.event_hour)}
-                      </Text>
+                      <View style={styles.liveEventTimeContainer}>
+                        <Text style={styles.liveEventTimeText}>
+                          {formatTo12Hour(event.event_hour)}
+                        </Text>
+                        {event.time_zone && (
+                          <Text style={styles.liveEventTimezoneText}>
+                            {event.time_zone}
+                          </Text>
+                        )}
+                      </View>
                     </View>
                     {event.language && (
                       <View style={styles.liveEventDetailItem}>
@@ -956,6 +964,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Poppins_500Medium',
     color: colors.text,
+  },
+  liveEventTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  liveEventTimeText: {
+    fontSize: 15,
+    fontFamily: 'Poppins_500Medium',
+    color: '#FFFFFF',
   },
   liveEventTimezoneText: {
     fontSize: 15,
