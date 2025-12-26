@@ -74,37 +74,66 @@ export default function OnboardingScreen() {
   const fetchOnboardingSlides = async () => {
     try {
       setLoading(true);
+      console.log('[Onboarding] Starting to fetch onboarding slides...');
 
-      // Fetch active onboarding
+      // Fetch active onboarding - use limit(1) instead of single() to handle multiple active onboardings
       const { data: onboardingData, error: onboardingError } = await supabase
         .from('onboardings')
-        .select('id')
+        .select('id, name, region, language')
         .eq('is_active', true)
-        .single();
+        .limit(1);
+
+      console.log('[Onboarding] Onboarding query result:', { onboardingData, onboardingError });
 
       if (onboardingError) {
         console.error('[Onboarding] Error fetching onboarding:', onboardingError);
         Alert.alert('Error', 'Failed to load onboarding content.');
+        setLoading(false);
         return;
       }
+
+      if (!onboardingData || onboardingData.length === 0) {
+        console.warn('[Onboarding] No active onboarding found');
+        Alert.alert('Info', 'No onboarding content is currently available.');
+        setLoading(false);
+        return;
+      }
+
+      const onboarding = onboardingData[0];
+      console.log('[Onboarding] Using onboarding:', onboarding);
 
       // Fetch slides for this onboarding
       const { data: slidesData, error: slidesError } = await supabase
         .from('onboarding_slides')
         .select('*')
-        .eq('onboarding_id', onboardingData.id)
+        .eq('onboarding_id', onboarding.id)
         .order('slide_order', { ascending: true });
+
+      console.log('[Onboarding] Slides query result:', { 
+        slidesCount: slidesData?.length, 
+        slidesError,
+        slides: slidesData 
+      });
 
       if (slidesError) {
         console.error('[Onboarding] Error fetching slides:', slidesError);
         Alert.alert('Error', 'Failed to load onboarding slides.');
+        setLoading(false);
         return;
       }
 
+      if (!slidesData || slidesData.length === 0) {
+        console.warn('[Onboarding] No slides found for onboarding:', onboarding.id);
+        Alert.alert('Info', 'No onboarding slides are available.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[Onboarding] Successfully loaded', slidesData.length, 'slides');
       setSlides(slidesData as OnboardingSlide[]);
     } catch (error) {
       console.error('[Onboarding] Unexpected error:', error);
-      Alert.alert('Error', 'An unexpected error occurred.');
+      Alert.alert('Error', 'An unexpected error occurred while loading onboarding.');
     } finally {
       setLoading(false);
     }
