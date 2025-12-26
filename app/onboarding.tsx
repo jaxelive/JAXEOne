@@ -43,10 +43,18 @@ export default function OnboardingScreen() {
   const [uploading, setUploading] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
 
+  // Helper function to check if media URL is valid
+  const hasValidMediaUrl = (url: string | null | undefined): boolean => {
+    return !!url && url.trim() !== '';
+  };
+
+  const currentSlide = slides[currentIndex];
+  const currentMediaUrl = hasValidMediaUrl(currentSlide?.media_url) ? currentSlide.media_url : null;
+
   const videoPlayer = useVideoPlayer(
-    slides[currentIndex]?.media_url || '',
+    currentMediaUrl || '',
     (player) => {
-      if (slides[currentIndex]?.media_type === 'video' && slides[currentIndex]?.media_url) {
+      if (currentSlide?.media_type === 'video' && currentMediaUrl) {
         player.loop = true;
         player.play();
       }
@@ -60,8 +68,8 @@ export default function OnboardingScreen() {
 
   useEffect(() => {
     // Update video player when slide changes
-    if (slides[currentIndex]?.media_type === 'video' && slides[currentIndex]?.media_url) {
-      videoPlayer.replace(slides[currentIndex].media_url!);
+    if (currentSlide?.media_type === 'video' && currentMediaUrl) {
+      videoPlayer.replace(currentMediaUrl);
       videoPlayer.play();
     }
   }, [currentIndex, slides]);
@@ -299,8 +307,6 @@ export default function OnboardingScreen() {
     );
   }
 
-  const currentSlide = slides[currentIndex];
-
   return (
     <View style={styles.container}>
       {/* Skip Button */}
@@ -314,7 +320,7 @@ export default function OnboardingScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Media Section */}
-        {currentSlide.media_type === 'video' && currentSlide.media_url ? (
+        {currentSlide.media_type === 'video' && currentMediaUrl ? (
           <View style={styles.mediaContainer}>
             <VideoView
               style={styles.video}
@@ -323,10 +329,10 @@ export default function OnboardingScreen() {
               allowsPictureInPicture={false}
             />
           </View>
-        ) : currentSlide.media_type === 'image' && currentSlide.media_url ? (
+        ) : currentSlide.media_type === 'image' && currentMediaUrl ? (
           <View style={styles.mediaContainer}>
             <Image
-              source={{ uri: currentSlide.media_url }}
+              source={{ uri: currentMediaUrl }}
               style={styles.image}
               resizeMode="contain"
             />
