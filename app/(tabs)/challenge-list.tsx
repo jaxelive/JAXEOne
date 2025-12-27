@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -46,11 +46,7 @@ export default function ChallengeListScreen() {
   const [loading, setLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
 
-  useEffect(() => {
-    fetchChallengeData();
-  }, [creator]);
-
-  const fetchChallengeData = async () => {
+  const fetchChallengeData = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -82,7 +78,13 @@ export default function ChallengeListScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [creator]);
+
+  useEffect(() => {
+    fetchChallengeData();
+  }, [creator]);
+
+
 
   const getDayStatus = (dayNumber: number): 'completed' | 'unlocked' | 'locked' => {
     const dayProgress = progress.find((p) => p.day_number === dayNumber);

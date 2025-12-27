@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -38,11 +38,7 @@ export default function ChallengeDayDetailsScreen() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDayData();
-  }, [dayId, creator]);
-
-  const fetchDayData = async () => {
+  const fetchDayData = useCallback(async () => {
     if (!creator || !dayId) return;
 
     try {
@@ -76,7 +72,13 @@ export default function ChallengeDayDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [creator, dayId, dayNumber]);
+
+  useEffect(() => {
+    fetchDayData();
+  }, [creator, dayId, dayNumber]);
+
+
 
   if (loading || !fontsLoaded) {
     return (

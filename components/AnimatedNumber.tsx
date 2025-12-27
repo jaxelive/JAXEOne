@@ -49,7 +49,7 @@ export function AnimatedNumber({
     }, delay);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [value]);
 
   useEffect(() => {
     // After initial animation, update when value changes

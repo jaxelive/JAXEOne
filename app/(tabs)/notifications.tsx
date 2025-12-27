@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -69,11 +69,7 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('all');
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [creator]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -113,7 +109,13 @@ export default function NotificationsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [creator]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [creator]);
+
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -45,28 +45,7 @@ export default function EarningsScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  useEffect(() => {
-    fetchData();
-  }, [creator]);
-
-  useEffect(() => {
-    if (!loading) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [loading]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -93,6 +72,67 @@ export default function EarningsScreen() {
         .or(`region.eq.${creator.region},region.is.null`)
         .gte('end_at', new Date().toISOString())
         .order('start_at', { ascending: true });
+
+      if (contestError) {
+        console.error('Error fetching contests:', contestError);
+      } else {
+        setContests(contestData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [creator]);
+
+  useEffect(() => {
+    fetchBonusData();
+  }, [creator]);
+
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading]);
+
+  const fetchBonusData = async () => {
+    if (!creator) return;
+
+    try {
+      setLoading(true);
+
+      // Fetch bonuses
+      const { data: bonusData, error: bonusError } = await supabase
+        .from('bonuses')
+        .select('*')
+        .eq('creator_id', creator.id)
+        .order('period_start', { ascending: false })
+        .limit(10);
+
+      if (bonusError) {
+        console.error('Error fetching bonuses:', bonusError);
+      } else {
+        setBonuses(bonusData || []);
+      }
+
+      // Fetch contests for creator's region
+      const { data: contestData, error: contestError } = await supabase
+        .from('contests')
+        .select('*')
+        .or(`region.eq.${creator.region},region.is.null`)
+        .gte('end_at', new Date().toISOString())
+        .order('start_at', { ascending: true});
 
       if (contestError) {
         console.error('Error fetching contests:', contestError);

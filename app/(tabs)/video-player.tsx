@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -43,42 +43,7 @@ export default function VideoPlayerScreen() {
     player.play();
   });
 
-  useEffect(() => {
-    fetchVideoData();
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-    };
-  }, [videoId, creator]);
-
-  useEffect(() => {
-    if (player && videoData) {
-      // Track progress every second
-      progressIntervalRef.current = setInterval(() => {
-        const currentTime = Math.floor(player.currentTime);
-        setWatchedSeconds(currentTime);
-        
-        // Update progress in database every 5 seconds
-        if (currentTime % 5 === 0 && currentTime > 0) {
-          updateProgress(currentTime);
-        }
-
-        // Check if video is completed (watched 95% or more)
-        if (videoData.duration_seconds && currentTime >= videoData.duration_seconds * 0.95) {
-          markAsCompleted();
-        }
-      }, 1000);
-
-      return () => {
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-        }
-      };
-    }
-  }, [player, videoData]);
-
-  const fetchVideoData = async () => {
+  const fetchVideoData = useCallback(async () => {
     if (!creator || !videoId) return;
 
     try {
@@ -111,9 +76,9 @@ export default function VideoPlayerScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [creator, videoId]);
 
-  const updateProgress = async (currentTime: number) => {
+  const updateProgress = useCallback(async (currentTime: number) => {
     if (!creator || !videoId) return;
 
     try {
@@ -132,9 +97,9 @@ export default function VideoPlayerScreen() {
     } catch (error: any) {
       console.error('Error updating progress:', error);
     }
-  };
+  }, [creator, videoId]);
 
-  const markAsCompleted = async () => {
+  const markAsCompleted = useCallback(async () => {
     if (!creator || !videoId) return;
 
     try {
@@ -162,7 +127,44 @@ export default function VideoPlayerScreen() {
     } catch (error: any) {
       console.error('Error marking as completed:', error);
     }
-  };
+  }, [creator, videoId, videoData]);
+
+  useEffect(() => {
+    fetchVideoData();
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, [creator, videoId]);
+
+  useEffect(() => {
+    if (player && videoData) {
+      // Track progress every second
+      progressIntervalRef.current = setInterval(() => {
+        const currentTime = Math.floor(player.currentTime);
+        setWatchedSeconds(currentTime);
+        
+        // Update progress in database every 5 seconds
+        if (currentTime % 5 === 0 && currentTime > 0) {
+          updateProgress(currentTime);
+        }
+
+        // Check if video is completed (watched 95% or more)
+        if (videoData.duration_seconds && currentTime >= videoData.duration_seconds * 0.95) {
+          markAsCompleted();
+        }
+      }, 1000);
+
+      return () => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+        }
+      };
+    }
+  }, [player, videoData]);
+
+
 
   if (loading || !fontsLoaded) {
     return (

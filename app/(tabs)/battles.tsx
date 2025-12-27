@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, Image } from 'react-native';
 import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,15 +51,7 @@ export default function BattlesScreen() {
   const [showManualDatePicker, setShowManualDatePicker] = useState(false);
   const [showManualTimePicker, setShowManualTimePicker] = useState(false);
 
-  useEffect(() => {
-    if (activeTab === 'view') {
-      fetchAvailableCreators();
-    }
-    fetchUpcomingBattles();
-    fetchMyAvailability();
-  }, [activeTab, creator]);
-
-  const fetchAvailableCreators = async () => {
+  const fetchAvailableCreators = useCallback(async () => {
     if (!creator) return;
     
     setLoading(true);
@@ -101,9 +93,9 @@ export default function BattlesScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [creator]);
 
-  const fetchUpcomingBattles = async () => {
+  const fetchUpcomingBattles = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -120,9 +112,9 @@ export default function BattlesScreen() {
     } catch (error: any) {
       console.error('Error fetching battles:', error);
     }
-  };
+  }, [creator]);
 
-  const fetchMyAvailability = async () => {
+  const fetchMyAvailability = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -140,7 +132,17 @@ export default function BattlesScreen() {
     } catch (error: any) {
       console.error('Error fetching my availability:', error);
     }
-  };
+  }, [creator]);
+
+  useEffect(() => {
+    if (activeTab === 'view') {
+      fetchAvailableCreators();
+    }
+    fetchUpcomingBattles();
+    fetchMyAvailability();
+  }, [activeTab, creator]);
+
+
 
   const handleSetAvailability = async () => {
     if (!creator) {

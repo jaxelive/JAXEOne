@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { Stack } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
@@ -158,14 +158,7 @@ export default function LearningHubScreen() {
   const [videoWatchPercentage, setVideoWatchPercentage] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (creator) {
-      fetchChallengeProgress();
-      fetchEducationProgress();
-    }
-  }, [creator]);
-
-  const fetchChallengeProgress = async () => {
+  const fetchChallengeProgress = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -180,9 +173,9 @@ export default function LearningHubScreen() {
     } catch (error: any) {
       console.error('Error fetching challenge progress:', error);
     }
-  };
+  }, [creator]);
 
-  const fetchEducationProgress = async () => {
+  const fetchEducationProgress = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -211,7 +204,16 @@ export default function LearningHubScreen() {
     } catch (error: any) {
       console.error('Error fetching education progress:', error);
     }
-  };
+  }, [creator]);
+
+  useEffect(() => {
+    if (creator) {
+      fetchChallengeProgress();
+      fetchEducationProgress();
+    }
+  }, [creator]);
+
+
 
   const isDayUnlocked = (dayNumber: number): boolean => {
     if (dayNumber === 1) return true;

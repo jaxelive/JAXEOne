@@ -138,6 +138,14 @@ export function extractStoragePathFromUrl(
     return null;
   }
 }
+
+const imageUploadUtils = {
+  uploadImageToStorage,
+  deleteImageFromStorage,
+  extractStoragePathFromUrl,
+};
+
+export default imageUploadUtils;
 </parameter>
 </invoke>
 

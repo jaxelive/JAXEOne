@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -43,11 +43,7 @@ export default function AIFlyersScreen() {
   const [battles, setBattles] = useState<BattleOption[]>([]);
   const [selectedBattle, setSelectedBattle] = useState<BattleOption | null>(null);
 
-  useEffect(() => {
-    fetchUpcomingBattles();
-  }, [creator]);
-
-  const fetchUpcomingBattles = async () => {
+  const fetchUpcomingBattles = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -64,7 +60,13 @@ export default function AIFlyersScreen() {
     } catch (error: any) {
       console.error('Error fetching battles:', error);
     }
-  };
+  }, [creator]);
+
+  useEffect(() => {
+    fetchUpcomingBattles();
+  }, [creator]);
+
+
 
   const handleSelectBattle = (battle: BattleOption) => {
     setSelectedBattle(battle);

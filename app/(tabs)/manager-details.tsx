@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -45,13 +45,7 @@ export default function ManagerDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (managerId) {
-      fetchManagerData();
-    }
-  }, [managerId]);
-
-  const fetchManagerData = async () => {
+  const fetchManagerData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -111,7 +105,15 @@ export default function ManagerDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [managerId]);
+
+  useEffect(() => {
+    if (managerId) {
+      fetchManagerData();
+    }
+  }, [managerId]);
+
+
 
   const handleTikTokPress = () => {
     // Use tiktok_handle from managers table first, fallback to username from users table

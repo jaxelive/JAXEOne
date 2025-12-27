@@ -169,7 +169,7 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
   useEffect(() => {
     console.log('[useCreatorData] Effect triggered for handle:', creatorHandle);
     fetchCreatorData();
-  }, [fetchCreatorData]);
+  }, [creatorHandle]);
 
   const getCreatorStats = (): CreatorStats | null => {
     if (!creator) {

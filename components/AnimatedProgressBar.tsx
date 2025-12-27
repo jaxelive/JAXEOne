@@ -47,7 +47,7 @@ export function AnimatedProgressBar({
     }, delay);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [percentage]);
 
   useEffect(() => {
     // After initial animation, update when percentage changes

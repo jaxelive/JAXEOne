@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Stack, router } from "expo-router";
 import { 
   ScrollView, 
@@ -145,7 +145,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const checkUnreadNotifications = async () => {
+  const checkUnreadNotifications = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -174,7 +174,7 @@ export default function HomeScreen() {
     } catch (error: any) {
       console.error('[HomeScreen] Unexpected error checking notifications:', error);
     }
-  };
+  }, [creator]);
 
   useEffect(() => {
     if (creator) {
@@ -304,7 +304,7 @@ export default function HomeScreen() {
     });
   };
 
-  const fetchBattleData = async () => {
+  const fetchBattleData = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -332,9 +332,9 @@ export default function HomeScreen() {
     } catch (error: any) {
       console.error('[HomeScreen] Unexpected error fetching battle data:', error);
     }
-  };
+  }, [creator]);
 
-  const fetchChallengeData = async () => {
+  const fetchChallengeData = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -395,9 +395,9 @@ export default function HomeScreen() {
     } catch (error: any) {
       console.error('[HomeScreen] Unexpected error fetching challenge data:', error);
     }
-  };
+  }, [creator]);
 
-  const fetchEducationData = async () => {
+  const fetchEducationData = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -473,9 +473,9 @@ export default function HomeScreen() {
     } catch (error: any) {
       console.error('[HomeScreen] Unexpected error fetching education data:', error);
     }
-  };
+  }, [creator]);
 
-  const fetchTopCreators = async () => {
+  const fetchTopCreators = useCallback(async () => {
     if (!creator) return;
 
     try {
@@ -538,7 +538,7 @@ export default function HomeScreen() {
     } catch (error: any) {
       console.error('[HomeScreen] Unexpected error fetching top creators:', error);
     }
-  };
+  }, [creator]);
 
   const handleManagerCardPress = () => {
     if (creator?.assigned_manager_id) {
