@@ -138,9 +138,3 @@ export function extractStoragePathFromUrl(
     return null;
   }
 }
-
-export default {
-  uploadImageToStorage,
-  deleteImageFromStorage,
-  extractStoragePathFromUrl,
-};
