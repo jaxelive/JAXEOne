@@ -142,6 +142,8 @@ export default function ProfileScreen() {
 
       // Update the creators table
       console.log('[Profile] Updating creators table with:', updates);
+      console.log('[Profile] Creator ID:', creator.id);
+      
       const { error, data } = await supabase
         .from('creators')
         .update(updates)
@@ -153,6 +155,20 @@ export default function ProfileScreen() {
         Alert.alert('Error', `Failed to update profile: ${error.message}`);
       } else {
         console.log('[Profile] Profile updated successfully:', data);
+        
+        // Verify the update by fetching the creator data again
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('creators')
+          .select('profile_picture_url, avatar_url')
+          .eq('id', creator.id)
+          .single();
+        
+        if (verifyError) {
+          console.error('[Profile] Error verifying update:', verifyError);
+        } else {
+          console.log('[Profile] Verified updated data:', verifyData);
+        }
+        
         Alert.alert('Success', 'Profile updated successfully!');
         setIsEditing(false);
         setSelectedImageUri(null);
@@ -160,6 +176,11 @@ export default function ProfileScreen() {
         // Refetch creator data to show updated profile picture
         console.log('[Profile] Refetching creator data...');
         await refetch();
+        
+        // Force update the profile picture state
+        if (uploadedImageUrl) {
+          setProfilePicture(uploadedImageUrl);
+        }
       }
     } catch (error: any) {
       console.error('[Profile] Error saving profile:', error);
@@ -242,7 +263,7 @@ export default function ProfileScreen() {
           >
             {profilePicture ? (
               <Image 
-                source={{ uri: profilePicture }} 
+                source={{ uri: `${profilePicture}?t=${Date.now()}` }} 
                 style={styles.avatar}
                 key={`${profilePicture}-${Date.now()}`}
               />
