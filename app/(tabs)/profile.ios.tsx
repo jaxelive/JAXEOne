@@ -41,6 +41,12 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (creator) {
+      console.log('[Profile] Creator data loaded:', {
+        id: creator.id,
+        handle: creator.creator_handle,
+        profile_picture_url: creator.profile_picture_url,
+        avatar_url: creator.avatar_url,
+      });
       setEmail(creator.email || '');
       setLanguage(creator.language || 'English');
       setPaypalEmail(creator.paypal_email || '');
@@ -65,6 +71,7 @@ export default function ProfileScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
+      console.log('[Profile] Image selected:', result.assets[0].uri);
       setProfilePicture(result.assets[0].uri);
       setProfilePictureChanged(true);
     }
@@ -135,9 +142,13 @@ export default function ProfileScreen() {
         console.error('[Profile] Error updating profile:', error);
         Alert.alert('Error', 'Failed to update profile. Please try again.');
       } else {
+        console.log('[Profile] Profile updated successfully');
         Alert.alert('Success', 'Profile updated successfully!');
         setIsEditing(false);
         setProfilePictureChanged(false);
+        
+        // Refetch creator data to show updated profile picture
+        console.log('[Profile] Refetching creator data...');
         await refetch();
       }
     } catch (error) {
@@ -220,7 +231,11 @@ export default function ProfileScreen() {
             activeOpacity={isEditing ? 0.7 : 1}
           >
             {profilePicture ? (
-              <Image source={{ uri: profilePicture }} style={styles.avatar} />
+              <Image 
+                source={{ uri: profilePicture }} 
+                style={styles.avatar}
+                key={profilePicture}
+              />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <IconSymbol
