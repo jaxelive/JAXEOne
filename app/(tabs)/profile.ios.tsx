@@ -35,9 +35,7 @@ export default function ProfileScreen() {
   const [language, setLanguage] = useState('');
   const [paypalEmail, setPaypalEmail] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
-
-  // Track if profile picture has changed
-  const [profilePictureChanged, setProfilePictureChanged] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   useEffect(() => {
     if (creator) {
@@ -51,7 +49,7 @@ export default function ProfileScreen() {
       setLanguage(creator.language || 'English');
       setPaypalEmail(creator.paypal_email || '');
       setProfilePicture(creator.profile_picture_url || creator.avatar_url || null);
-      setProfilePictureChanged(false);
+      setSelectedImageUri(null);
     }
   }, [creator]);
 
@@ -72,8 +70,8 @@ export default function ProfileScreen() {
 
     if (!result.canceled && result.assets[0]) {
       console.log('[Profile] Image selected:', result.assets[0].uri);
+      setSelectedImageUri(result.assets[0].uri);
       setProfilePicture(result.assets[0].uri);
-      setProfilePictureChanged(true);
     }
   };
 
@@ -84,18 +82,15 @@ export default function ProfileScreen() {
     }
 
     setIsSaving(true);
+    
     try {
-      const updates: any = {
-        email,
-        language,
-        paypal_email: paypalEmail,
-      };
+      let uploadedImageUrl: string | null = null;
 
-      // Upload profile picture if it changed
-      if (profilePictureChanged && profilePicture) {
+      // Upload profile picture if a new one was selected
+      if (selectedImageUri) {
         setIsUploadingProfilePic(true);
         try {
-          console.log('[Profile] Uploading profile picture...');
+          console.log('[Profile] Uploading new profile picture...');
           
           // Delete old profile picture if it exists
           if (creator.profile_picture_url) {
@@ -112,7 +107,7 @@ export default function ProfileScreen() {
 
           // Upload new profile picture
           const uploadResult = await uploadImageToStorage(
-            profilePicture,
+            selectedImageUri,
             'avatars',
             `creators/${creator.id}`,
             800,
@@ -120,43 +115,55 @@ export default function ProfileScreen() {
             0.8
           );
 
-          console.log('[Profile] Profile picture uploaded:', uploadResult.publicUrl);
-          updates.profile_picture_url = uploadResult.publicUrl;
-          updates.avatar_url = uploadResult.publicUrl;
+          uploadedImageUrl = uploadResult.publicUrl;
+          console.log('[Profile] Profile picture uploaded successfully:', uploadedImageUrl);
         } catch (uploadError) {
           console.error('[Profile] Profile picture upload error:', uploadError);
           Alert.alert('Upload Error', 'Failed to upload profile picture. Please try again.');
-          setIsSaving(false);
-          setIsUploadingProfilePic(false);
           return;
         } finally {
           setIsUploadingProfilePic(false);
         }
       }
 
+      // Prepare updates object
+      const updates: any = {
+        email,
+        language,
+        paypal_email: paypalEmail,
+      };
+
+      // Add profile picture URLs if a new image was uploaded
+      if (uploadedImageUrl) {
+        updates.profile_picture_url = uploadedImageUrl;
+        updates.avatar_url = uploadedImageUrl;
+        console.log('[Profile] Adding profile picture URLs to update:', uploadedImageUrl);
+      }
+
       // Update the creators table
       console.log('[Profile] Updating creators table with:', updates);
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('creators')
         .update(updates)
-        .eq('id', creator.id);
+        .eq('id', creator.id)
+        .select();
 
       if (error) {
         console.error('[Profile] Error updating profile:', error);
-        Alert.alert('Error', 'Failed to update profile. Please try again.');
+        Alert.alert('Error', `Failed to update profile: ${error.message}`);
       } else {
-        console.log('[Profile] Profile updated successfully');
+        console.log('[Profile] Profile updated successfully:', data);
         Alert.alert('Success', 'Profile updated successfully!');
         setIsEditing(false);
-        setProfilePictureChanged(false);
+        setSelectedImageUri(null);
         
         // Refetch creator data to show updated profile picture
         console.log('[Profile] Refetching creator data...');
         await refetch();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Profile] Error saving profile:', error);
-      Alert.alert('Error', 'An unexpected error occurred.');
+      Alert.alert('Error', `An unexpected error occurred: ${error.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -204,7 +211,7 @@ export default function ProfileScreen() {
                   setLanguage(creator.language || 'English');
                   setPaypalEmail(creator.paypal_email || '');
                   setProfilePicture(creator.profile_picture_url || creator.avatar_url || null);
-                  setProfilePictureChanged(false);
+                  setSelectedImageUri(null);
                   setIsEditing(false);
                 } else {
                   setIsEditing(true);
