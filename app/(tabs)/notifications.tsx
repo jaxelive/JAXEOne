@@ -425,6 +425,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    zIndex: 10,
   },
   contestBadgeText: {
     fontSize: 10,
@@ -437,6 +438,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     marginBottom: 16,
+    paddingRight: 100,
   },
   contestIconWrapper: {
     width: 64,
@@ -445,6 +447,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   contestInfo: {
     flex: 1,
@@ -454,6 +457,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
   contestDate: {
     fontSize: 12,
