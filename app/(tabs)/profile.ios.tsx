@@ -9,9 +9,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Image,
   Modal,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Stack, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -36,6 +36,7 @@ export default function ProfileScreen() {
   const [paypalEmail, setPaypalEmail] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [imageKey, setImageKey] = useState(0);
 
   useEffect(() => {
     if (creator) {
@@ -50,6 +51,8 @@ export default function ProfileScreen() {
       setPaypalEmail(creator.paypal_email || '');
       setProfilePicture(creator.profile_picture_url || creator.avatar_url || null);
       setSelectedImageUri(null);
+      // Force image refresh when creator data changes
+      setImageKey(prev => prev + 1);
     }
   }, [creator]);
 
@@ -72,6 +75,7 @@ export default function ProfileScreen() {
       console.log('[Profile] Image selected:', result.assets[0].uri);
       setSelectedImageUri(result.assets[0].uri);
       setProfilePicture(result.assets[0].uri);
+      setImageKey(prev => prev + 1);
     }
   };
 
@@ -153,6 +157,17 @@ export default function ProfileScreen() {
         Alert.alert('Error', `Failed to update profile: ${error.message}`);
       } else {
         console.log('[Profile] Profile updated successfully:', data);
+        
+        // Clear image cache for the old URL
+        if (uploadedImageUrl) {
+          try {
+            await Image.clearMemoryCache();
+            console.log('[Profile] Image cache cleared');
+          } catch (cacheError) {
+            console.warn('[Profile] Could not clear image cache:', cacheError);
+          }
+        }
+        
         Alert.alert('Success', 'Profile updated successfully!');
         setIsEditing(false);
         setSelectedImageUri(null);
@@ -160,6 +175,12 @@ export default function ProfileScreen() {
         // Refetch creator data to show updated profile picture
         console.log('[Profile] Refetching creator data...');
         await refetch();
+        
+        // Force update the profile picture state and image key
+        if (uploadedImageUrl) {
+          setProfilePicture(uploadedImageUrl);
+          setImageKey(prev => prev + 1);
+        }
       }
     } catch (error: any) {
       console.error('[Profile] Error saving profile:', error);
@@ -212,6 +233,7 @@ export default function ProfileScreen() {
                   setPaypalEmail(creator.paypal_email || '');
                   setProfilePicture(creator.profile_picture_url || creator.avatar_url || null);
                   setSelectedImageUri(null);
+                  setImageKey(prev => prev + 1);
                   setIsEditing(false);
                 } else {
                   setIsEditing(true);
@@ -242,9 +264,12 @@ export default function ProfileScreen() {
           >
             {profilePicture ? (
               <Image 
-                source={{ uri: profilePicture }} 
+                source={{ uri: profilePicture }}
                 style={styles.avatar}
-                key={`${profilePicture}-${Date.now()}`}
+                key={`profile-${imageKey}`}
+                cachePolicy="none"
+                contentFit="cover"
+                transition={300}
               />
             ) : (
               <View style={styles.avatarPlaceholder}>
