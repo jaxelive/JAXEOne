@@ -23,6 +23,9 @@ import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, P
 
 const { width } = Dimensions.get('window');
 
+// Hardcoded creator handle - no authentication needed
+const CREATOR_HANDLE = 'avelezsanti';
+
 export default function HomeScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -34,7 +37,7 @@ export default function HomeScreen() {
     Poppins_700Bold,
   });
   
-  const { creator, loading, error, stats, refetch } = useCreatorData();
+  const { creator, loading, error, stats, refetch } = useCreatorData(CREATOR_HANDLE);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -107,8 +110,16 @@ export default function HomeScreen() {
 
   const fullName = `${creator.first_name} ${creator.last_name}`.trim() || creator.creator_handle;
   const profileImageUrl = creator.avatar_url || creator.profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop';
-  const creatorTypes = creator.creator_type || ['LIVE'];
+  
+  // Get creator types from database, default to ['Creator'] if not set
+  const creatorTypes = creator.creator_type && creator.creator_type.length > 0 
+    ? creator.creator_type 
+    : ['Creator'];
+  
   const region = creator.region || 'USA / Canada';
+
+  // Format creator types for display
+  const creatorTypeDisplay = creatorTypes.join(' / ');
 
   return (
     <>
@@ -158,7 +169,7 @@ export default function HomeScreen() {
               <View style={styles.profileInfo}>
                 <Text style={styles.welcomeGreeting}>Hey there! 👋</Text>
                 <Text style={styles.welcomeTitle}>{fullName}</Text>
-                <Text style={styles.welcomeSubtitle}>Lifestyle & Vibes • LIVE Creator</Text>
+                <Text style={styles.welcomeSubtitle}>Lifestyle & Vibes • {creatorTypeDisplay} Creator</Text>
                 <Text style={styles.tiktokHandle}>@{creator.creator_handle}</Text>
                 <View style={styles.badgeRow}>
                   <View style={styles.badge}>

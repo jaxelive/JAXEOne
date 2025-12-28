@@ -186,7 +186,8 @@ export default function HomeScreen() {
         liveDays: creator.live_days_30d,
         liveHours: Math.floor(creator.live_duration_seconds_30d / 3600),
         hasManager: !!creator.manager,
-        managerName: creator.manager ? `${creator.manager.first_name} ${creator.manager.last_name}` : 'None'
+        managerName: creator.manager ? `${creator.manager.first_name} ${creator.manager.last_name}` : 'None',
+        creatorType: creator.creator_type
       });
       fetchBattleData();
       fetchChallengeData();
@@ -607,6 +608,11 @@ export default function HomeScreen() {
   const firstName = creator.first_name || creator.creator_handle;
   const profileImageUrl = creator.avatar_url || creator.profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop';
   const region = creator.region || 'USA & Canada';
+  
+  // Get creator types from database, default to ['Creator'] if not set
+  const creatorTypes = creator.creator_type && creator.creator_type.length > 0 
+    ? creator.creator_type 
+    : ['Creator'];
 
   // Calculate tier and next tier from real data with region-based logic
   const currentDiamonds = creator.diamonds_monthly || 0;
@@ -696,9 +702,11 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   </View>
                   <View style={styles.headerBadges}>
-                    <View style={styles.headerBadge}>
-                      <Text style={styles.headerBadgeText}>Live / Shop</Text>
-                    </View>
+                    {creatorTypes.map((type, index) => (
+                      <View key={index} style={styles.headerBadge}>
+                        <Text style={styles.headerBadgeText}>{type}</Text>
+                      </View>
+                    ))}
                   </View>
                   <View style={styles.headerRegions}>
                     <View style={styles.regionBadge}>
