@@ -234,27 +234,46 @@ export default function ProfileScreen() {
           title: 'Profile',
           headerShown: true,
           headerRight: () => (
-            <TouchableOpacity
-              onPress={() => {
-                if (isEditing) {
-                  // Cancel editing
-                  setEmail(creator.email || '');
-                  setLanguage(creator.language || 'English');
-                  setPaypalEmail(creator.paypal_email || '');
-                  const imageUrl = creator.profile_picture_url || creator.avatar_url;
-                  setProfilePicture(imageUrl ? `${imageUrl}?t=${Date.now()}` : null);
-                  setSelectedImageUri(null);
-                  setIsEditing(false);
-                } else {
-                  setIsEditing(true);
-                }
-              }}
-              style={styles.headerButton}
-            >
-              <Text style={styles.headerButtonText}>
-                {isEditing ? 'Cancel' : 'Edit'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.headerButtonsContainer}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (isEditing) {
+                    // Cancel editing
+                    setEmail(creator.email || '');
+                    setLanguage(creator.language || 'English');
+                    setPaypalEmail(creator.paypal_email || '');
+                    const imageUrl = creator.profile_picture_url || creator.avatar_url;
+                    setProfilePicture(imageUrl ? `${imageUrl}?t=${Date.now()}` : null);
+                    setSelectedImageUri(null);
+                    setIsEditing(false);
+                  } else {
+                    setIsEditing(true);
+                  }
+                }}
+                style={styles.headerButton}
+              >
+                <Text style={styles.headerButtonText}>
+                  {isEditing ? 'Cancel' : 'Edit'}
+                </Text>
+              </TouchableOpacity>
+              
+              {isEditing && (
+                <TouchableOpacity
+                  onPress={handleSave}
+                  disabled={isSaving || isUploadingProfilePic}
+                  style={[
+                    styles.headerSaveButton,
+                    (isSaving || isUploadingProfilePic) && styles.headerSaveButtonDisabled
+                  ]}
+                >
+                  {(isSaving || isUploadingProfilePic) ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.headerSaveButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
           ),
         }}
       />
@@ -445,26 +464,6 @@ export default function ProfileScreen() {
             >
               <Text style={styles.requestButtonText}>Request Manager</Text>
             </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        {/* Save Button */}
-        {isEditing && (
-          <TouchableOpacity
-            style={[styles.saveButton, (isSaving || isUploadingProfilePic) && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={isSaving || isUploadingProfilePic}
-          >
-            {(isSaving || isUploadingProfilePic) ? (
-              <View style={styles.savingContainer}>
-                <ActivityIndicator color="#fff" />
-                <Text style={styles.saveButtonText}>
-                  {isUploadingProfilePic ? 'Uploading...' : 'Saving...'}
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            )}
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -692,33 +691,37 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  saveButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    padding: 18,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  savingContainer: {
+  headerButtonsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+    marginRight: 16,
   },
   headerButton: {
-    marginRight: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   headerButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.primary,
+  },
+  headerSaveButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSaveButtonDisabled: {
+    opacity: 0.6,
+  },
+  headerSaveButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
   loadingText: {
     marginTop: 16,
