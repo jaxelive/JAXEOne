@@ -55,6 +55,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [questionId: string]: string }>({});
   const [showResults, setShowResults] = useState(false);
@@ -63,16 +64,24 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    console.log('[QuizComponent] Mounted with quizId:', quizId);
+    console.log('[QuizComponent] Mounted with quizId:', quizId, 'creatorHandle:', creatorHandle);
+    if (!quizId) {
+      console.error('[QuizComponent] No quizId provided!');
+      setError('Quiz ID is missing');
+      setLoading(false);
+      return;
+    }
     fetchQuizData();
   }, [quizId]);
 
   const fetchQuizData = async () => {
     try {
-      console.log('[QuizComponent] Fetching quiz data for:', quizId);
+      console.log('[QuizComponent] Starting fetchQuizData for quizId:', quizId);
       setLoading(true);
+      setError(null);
 
       // Fetch quiz details
+      console.log('[QuizComponent] Fetching quiz from course_quizzes...');
       const { data: quiz, error: quizError } = await supabase
         .from('course_quizzes')
         .select('*')
@@ -81,12 +90,26 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
       if (quizError) {
         console.error('[QuizComponent] Error fetching quiz:', quizError);
+        setError(`Failed to load quiz: ${quizError.message}`);
         throw quizError;
       }
 
-      console.log('[QuizComponent] Quiz fetched:', quiz);
+      if (!quiz) {
+        console.error('[QuizComponent] Quiz not found for id:', quizId);
+        setError('Quiz not found');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[QuizComponent] Quiz fetched successfully:', {
+        id: quiz.id,
+        title: quiz.title,
+        required_correct_answers: quiz.required_correct_answers,
+        total_questions: quiz.total_questions,
+      });
 
       // Fetch questions
+      console.log('[QuizComponent] Fetching questions from quiz_questions...');
       const { data: questions, error: questionsError } = await supabase
         .from('quiz_questions')
         .select('*')
@@ -95,13 +118,23 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
       if (questionsError) {
         console.error('[QuizComponent] Error fetching questions:', questionsError);
+        setError(`Failed to load questions: ${questionsError.message}`);
         throw questionsError;
       }
 
-      console.log('[QuizComponent] Questions fetched:', questions?.length || 0);
+      if (!questions || questions.length === 0) {
+        console.error('[QuizComponent] No questions found for quiz:', quizId);
+        setError('No questions found for this quiz');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[QuizComponent] Questions fetched:', questions.length, 'questions');
 
       // Fetch answers for all questions
-      const questionIds = questions?.map(q => q.id) || [];
+      const questionIds = questions.map(q => q.id);
+      console.log('[QuizComponent] Fetching answers for', questionIds.length, 'questions...');
+      
       const { data: answers, error: answersError } = await supabase
         .from('quiz_answers')
         .select('*')
@@ -110,22 +143,33 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
       if (answersError) {
         console.error('[QuizComponent] Error fetching answers:', answersError);
+        setError(`Failed to load answers: ${answersError.message}`);
         throw answersError;
       }
 
-      console.log('[QuizComponent] Answers fetched:', answers?.length || 0);
+      if (!answers || answers.length === 0) {
+        console.error('[QuizComponent] No answers found for questions');
+        setError('No answers found for quiz questions');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[QuizComponent] Answers fetched:', answers.length, 'answers');
 
       // Group answers by question
-      const questionsWithAnswers: QuizQuestion[] = (questions || []).map(question => ({
-        id: question.id,
-        question_text: question.question_text,
-        order_index: question.order_index,
-        answers: (answers || []).filter(a => a.question_id === question.id),
-      }));
+      const questionsWithAnswers: QuizQuestion[] = questions.map(question => {
+        const questionAnswers = answers.filter(a => a.question_id === question.id);
+        console.log(`[QuizComponent] Question "${question.question_text.substring(0, 50)}..." has ${questionAnswers.length} answers`);
+        
+        return {
+          id: question.id,
+          question_text: question.question_text,
+          order_index: question.order_index,
+          answers: questionAnswers,
+        };
+      });
 
-      console.log('[QuizComponent] Questions with answers:', questionsWithAnswers.length);
-
-      setQuizData({
+      const quizDataToSet = {
         id: quiz.id,
         title: quiz.title,
         description: quiz.description,
@@ -133,14 +177,18 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         required_correct_answers: quiz.required_correct_answers,
         total_questions: quiz.total_questions,
         questions: questionsWithAnswers,
-      });
+      };
 
-      console.log('[QuizComponent] Quiz data set successfully');
+      console.log('[QuizComponent] Setting quiz data with', questionsWithAnswers.length, 'questions');
+      setQuizData(quizDataToSet);
+      console.log('[QuizComponent] Quiz data set successfully!');
     } catch (error: any) {
-      console.error('[QuizComponent] Error fetching quiz data:', error);
+      console.error('[QuizComponent] Exception in fetchQuizData:', error);
+      setError(`Failed to load quiz: ${error.message || 'Unknown error'}`);
       Alert.alert('Error', 'Failed to load quiz. Please try again.');
     } finally {
       setLoading(false);
+      console.log('[QuizComponent] fetchQuizData completed, loading set to false');
     }
   };
 
@@ -167,7 +215,10 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   };
 
   const handleSubmit = async () => {
-    if (!quizData) return;
+    if (!quizData) {
+      console.error('[QuizComponent] Cannot submit - no quiz data');
+      return;
+    }
 
     console.log('[QuizComponent] Submitting quiz');
 
@@ -202,12 +253,19 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       const scorePercentage = Math.round((correct / totalQuestions) * 100);
       const passed = correct >= (quizData.required_correct_answers || 0);
 
-      console.log('[QuizComponent] Quiz results:', { correct, totalQuestions, scorePercentage, passed });
+      console.log('[QuizComponent] Quiz results:', { 
+        correct, 
+        totalQuestions, 
+        scorePercentage, 
+        passed,
+        required: quizData.required_correct_answers 
+      });
 
       setCorrectCount(correct);
       setScore(scorePercentage);
 
       // Save attempt to database
+      console.log('[QuizComponent] Saving quiz attempt to database...');
       const { error } = await supabase
         .from('user_quiz_attempts')
         .insert({
@@ -249,16 +307,31 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading quiz...</Text>
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
         </View>
       </View>
     );
   }
 
-  if (!quizData) {
+  if (error || !quizData) {
     return (
       <View style={styles.container}>
         <View style={styles.centerContent}>
-          <Text style={styles.errorText}>Quiz not found</Text>
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle.fill"
+            android_material_icon_name="error"
+            size={64}
+            color={colors.error}
+          />
+          <Text style={styles.errorTitle}>Unable to Load Quiz</Text>
+          <Text style={styles.errorText}>
+            {error || 'Quiz not found. Please try again later.'}
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchQuizData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
@@ -319,7 +392,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
           <View style={styles.resultsButtons}>
             {!passed && (
               <TouchableOpacity
-                style={styles.retryButton}
+                style={styles.retryButtonLarge}
                 onPress={handleRetry}
                 activeOpacity={0.7}
               >
@@ -329,7 +402,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
                   size={20}
                   color="#FFFFFF"
                 />
-                <Text style={styles.retryButtonText}>Try Again</Text>
+                <Text style={styles.retryButtonTextLarge}>Try Again</Text>
               </TouchableOpacity>
             )}
 
@@ -502,12 +575,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
   },
+  errorTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
   errorText: {
     fontSize: 16,
     fontFamily: 'Poppins_500Medium',
     color: colors.error,
     textAlign: 'center',
     marginBottom: 20,
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
@@ -724,6 +806,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   retryButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    padding: 16,
+    paddingHorizontal: 32,
+    marginBottom: 12,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  retryButtonLarge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -732,7 +827,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
   },
-  retryButtonText: {
+  retryButtonTextLarge: {
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
@@ -751,14 +846,16 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   closeButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
     padding: 16,
     paddingHorizontal: 32,
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   closeButtonText: {
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
-    color: '#FFFFFF',
+    color: colors.primary,
   },
 });

@@ -19,7 +19,11 @@ export default function QuizScreen() {
   const quizId = Array.isArray(params.quizId) ? params.quizId[0] : params.quizId;
   const quizTitle = Array.isArray(params.quizTitle) ? params.quizTitle[0] : params.quizTitle;
 
-  console.log('[QuizScreen] Rendering with params:', { quizId, quizTitle });
+  console.log('[QuizScreen] Rendering with params:', { 
+    quizId, 
+    quizTitle,
+    rawParams: params 
+  });
 
   const handleQuizComplete = (passed: boolean, score: number) => {
     console.log('[QuizScreen] Quiz completed:', { passed, score });
@@ -45,7 +49,7 @@ export default function QuizScreen() {
   );
 
   if (!quizId) {
-    console.error('[QuizScreen] No quizId provided');
+    console.error('[QuizScreen] No quizId provided, params:', params);
     return null;
   }
 
