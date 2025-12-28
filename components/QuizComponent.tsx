@@ -63,11 +63,13 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    console.log('[QuizComponent] Mounted with quizId:', quizId);
     fetchQuizData();
   }, [quizId]);
 
   const fetchQuizData = async () => {
     try {
+      console.log('[QuizComponent] Fetching quiz data for:', quizId);
       setLoading(true);
 
       // Fetch quiz details
@@ -77,7 +79,12 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         .eq('id', quizId)
         .single();
 
-      if (quizError) throw quizError;
+      if (quizError) {
+        console.error('[QuizComponent] Error fetching quiz:', quizError);
+        throw quizError;
+      }
+
+      console.log('[QuizComponent] Quiz fetched:', quiz);
 
       // Fetch questions
       const { data: questions, error: questionsError } = await supabase
@@ -86,25 +93,37 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         .eq('quiz_id', quizId)
         .order('order_index', { ascending: true });
 
-      if (questionsError) throw questionsError;
+      if (questionsError) {
+        console.error('[QuizComponent] Error fetching questions:', questionsError);
+        throw questionsError;
+      }
+
+      console.log('[QuizComponent] Questions fetched:', questions?.length || 0);
 
       // Fetch answers for all questions
-      const questionIds = questions.map(q => q.id);
+      const questionIds = questions?.map(q => q.id) || [];
       const { data: answers, error: answersError } = await supabase
         .from('quiz_answers')
         .select('*')
         .in('question_id', questionIds)
         .order('order_index', { ascending: true });
 
-      if (answersError) throw answersError;
+      if (answersError) {
+        console.error('[QuizComponent] Error fetching answers:', answersError);
+        throw answersError;
+      }
+
+      console.log('[QuizComponent] Answers fetched:', answers?.length || 0);
 
       // Group answers by question
-      const questionsWithAnswers: QuizQuestion[] = questions.map(question => ({
+      const questionsWithAnswers: QuizQuestion[] = (questions || []).map(question => ({
         id: question.id,
         question_text: question.question_text,
         order_index: question.order_index,
-        answers: answers.filter(a => a.question_id === question.id),
+        answers: (answers || []).filter(a => a.question_id === question.id),
       }));
+
+      console.log('[QuizComponent] Questions with answers:', questionsWithAnswers.length);
 
       setQuizData({
         id: quiz.id,
@@ -115,6 +134,8 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         total_questions: quiz.total_questions,
         questions: questionsWithAnswers,
       });
+
+      console.log('[QuizComponent] Quiz data set successfully');
     } catch (error: any) {
       console.error('[QuizComponent] Error fetching quiz data:', error);
       Alert.alert('Error', 'Failed to load quiz. Please try again.');
@@ -124,6 +145,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   };
 
   const handleAnswerSelect = (questionId: string, answerId: string) => {
+    console.log('[QuizComponent] Answer selected:', { questionId, answerId });
     setSelectedAnswers(prev => ({
       ...prev,
       [questionId]: answerId,
@@ -131,12 +153,14 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   };
 
   const handleNext = () => {
+    console.log('[QuizComponent] Moving to next question');
     if (currentQuestionIndex < (quizData?.questions.length || 0) - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
 
   const handlePrevious = () => {
+    console.log('[QuizComponent] Moving to previous question');
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
     }
@@ -145,12 +169,15 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   const handleSubmit = async () => {
     if (!quizData) return;
 
+    console.log('[QuizComponent] Submitting quiz');
+
     // Check if all questions are answered
     const unansweredQuestions = quizData.questions.filter(
       q => !selectedAnswers[q.id]
     );
 
     if (unansweredQuestions.length > 0) {
+      console.log('[QuizComponent] Unanswered questions:', unansweredQuestions.length);
       Alert.alert(
         'Incomplete Quiz',
         `Please answer all questions before submitting. ${unansweredQuestions.length} question(s) remaining.`
@@ -175,6 +202,8 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       const scorePercentage = Math.round((correct / totalQuestions) * 100);
       const passed = correct >= (quizData.required_correct_answers || 0);
 
+      console.log('[QuizComponent] Quiz results:', { correct, totalQuestions, scorePercentage, passed });
+
       setCorrectCount(correct);
       setScore(scorePercentage);
 
@@ -191,6 +220,8 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
       if (error) {
         console.error('[QuizComponent] Error saving quiz attempt:', error);
+      } else {
+        console.log('[QuizComponent] Quiz attempt saved successfully');
       }
 
       setShowResults(true);
@@ -204,6 +235,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   };
 
   const handleRetry = () => {
+    console.log('[QuizComponent] Retrying quiz');
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
     setShowResults(false);

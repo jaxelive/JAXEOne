@@ -203,6 +203,8 @@ export default function AcademyScreen() {
           quiz: item.content_type === 'quiz' ? item.quiz : undefined,
         })) || [];
 
+        console.log(`[Academy] Course "${course.title}" has ${transformedContent.length} content items`);
+
         coursesWithContent.push({
           id: course.id,
           title: course.title,
@@ -441,16 +443,22 @@ export default function AcademyScreen() {
         },
       });
     } else if (item.content_type === 'quiz' && item.quiz) {
-      console.log('[Academy] Opening quiz:', item.quiz.id);
+      console.log('[Academy] Opening quiz:', item.quiz.id, item.quiz.title);
       
-      // Navigate to quiz screen
-      router.push({
-        pathname: '/(tabs)/quiz',
-        params: { 
-          quizId: item.quiz.id,
-          quizTitle: item.quiz.title,
-        },
-      });
+      try {
+        // Navigate to quiz screen
+        router.push({
+          pathname: '/(tabs)/quiz',
+          params: { 
+            quizId: item.quiz.id,
+            quizTitle: item.quiz.title,
+          },
+        });
+        console.log('[Academy] Quiz navigation initiated');
+      } catch (error) {
+        console.error('[Academy] Error navigating to quiz:', error);
+        Alert.alert('Error', 'Failed to open quiz. Please try again.');
+      }
     }
   };
 

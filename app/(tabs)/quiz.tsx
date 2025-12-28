@@ -10,29 +10,42 @@ import { useFocusEffect } from '@react-navigation/native';
 const CREATOR_HANDLE = 'avelezsanti';
 
 export default function QuizScreen() {
-  const { quizId, quizTitle } = useLocalSearchParams<{ 
+  const params = useLocalSearchParams<{ 
     quizId: string;
     quizTitle: string;
   }>();
+
+  // Ensure we have the quizId
+  const quizId = Array.isArray(params.quizId) ? params.quizId[0] : params.quizId;
+  const quizTitle = Array.isArray(params.quizTitle) ? params.quizTitle[0] : params.quizTitle;
+
+  console.log('[QuizScreen] Rendering with params:', { quizId, quizTitle });
 
   const handleQuizComplete = (passed: boolean, score: number) => {
     console.log('[QuizScreen] Quiz completed:', { passed, score });
   };
 
   const handleClose = () => {
-    router.back();
+    console.log('[QuizScreen] Closing quiz');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/academy');
+    }
   };
 
   // Prevent going back during quiz
   useFocusEffect(
     useCallback(() => {
+      console.log('[QuizScreen] Screen focused');
       return () => {
-        // Cleanup if needed
+        console.log('[QuizScreen] Screen unfocused');
       };
     }, [])
   );
 
   if (!quizId) {
+    console.error('[QuizScreen] No quizId provided');
     return null;
   }
 
