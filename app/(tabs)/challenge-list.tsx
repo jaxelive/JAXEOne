@@ -127,7 +127,7 @@ export default function ChallengeListScreen() {
         .select('*')
         .eq('creator_handle', CREATOR_HANDLE)
         .eq('challenge_id', challengeData.id)
-        .order('day_number', { ascending: true });
+        .order('day_number', { ascending: true});
 
       if (progressError && progressError.code !== 'PGRST116') {
         console.error('[Challenge] Error fetching progress:', progressError);
@@ -271,58 +271,79 @@ export default function ChallengeListScreen() {
 
       console.log('[Challenge] Day 1 ID:', day1.id);
 
-      // Create user challenge using creator_handle
-      console.log('[Challenge] Creating user challenge record...');
-      const { data: challengeInsertData, error: challengeError } = await supabase
+      // Check if user challenge already exists
+      const { data: existingChallenge } = await supabase
         .from('user_challenge_progress')
-        .upsert({
-          creator_handle: CREATOR_HANDLE,
-          challenge_id: challenge.id,
-          status: 'in_progress',
-          started_at: now,
-          current_day: 1,
-          completed_days: 0,
-          user_id: null, // Set to null since we're using creator_handle
-        }, {
-          onConflict: 'creator_handle,challenge_id',
-        })
-        .select();
+        .select('id')
+        .eq('creator_handle', CREATOR_HANDLE)
+        .eq('challenge_id', challenge.id)
+        .maybeSingle();
 
-      if (challengeError) {
-        console.error('[Challenge] Error creating user challenge:', challengeError);
-        console.error('[Challenge] Error details:', JSON.stringify(challengeError, null, 2));
-        throw challengeError;
+      if (!existingChallenge) {
+        // Create user challenge using creator_handle
+        console.log('[Challenge] Creating user challenge record...');
+        const { data: challengeInsertData, error: challengeError } = await supabase
+          .from('user_challenge_progress')
+          .insert({
+            creator_handle: CREATOR_HANDLE,
+            challenge_id: challenge.id,
+            status: 'in_progress',
+            started_at: now,
+            current_day: 1,
+            completed_days: 0,
+            user_id: null, // Set to null since we're using creator_handle
+          })
+          .select();
+
+        if (challengeError) {
+          console.error('[Challenge] Error creating user challenge:', challengeError);
+          console.error('[Challenge] Error details:', JSON.stringify(challengeError, null, 2));
+          throw challengeError;
+        }
+
+        console.log('[Challenge] User challenge created:', challengeInsertData);
+      } else {
+        console.log('[Challenge] User challenge already exists, skipping creation');
       }
 
-      console.log('[Challenge] User challenge created:', challengeInsertData);
-
-      // Create day 1 progress using creator_handle (using day_id for unique constraint)
-      console.log('[Challenge] Creating day 1 progress record...');
-      const { data: progressInsertData, error: progressError } = await supabase
+      // Check if day 1 progress already exists
+      const { data: existingDay1 } = await supabase
         .from('user_day_progress')
-        .upsert({
-          creator_handle: CREATOR_HANDLE,
-          challenge_id: challenge.id,
-          day_id: day1.id,
-          day_number: 1,
-          status: 'active',
-          available_at: now,
-          expires_at: expiresAt,
-          user_marked_complete: false,
-          admin_validated: false,
-          user_id: null, // Set to null since we're using creator_handle
-        }, {
-          onConflict: 'creator_handle,day_id',
-        })
-        .select();
+        .select('id')
+        .eq('creator_handle', CREATOR_HANDLE)
+        .eq('day_id', day1.id)
+        .maybeSingle();
 
-      if (progressError) {
-        console.error('[Challenge] Error creating day 1 progress:', progressError);
-        console.error('[Challenge] Error details:', JSON.stringify(progressError, null, 2));
-        throw progressError;
+      if (!existingDay1) {
+        // Create day 1 progress using creator_handle
+        console.log('[Challenge] Creating day 1 progress record...');
+        const { data: progressInsertData, error: progressError } = await supabase
+          .from('user_day_progress')
+          .insert({
+            creator_handle: CREATOR_HANDLE,
+            challenge_id: challenge.id,
+            day_id: day1.id,
+            day_number: 1,
+            status: 'active',
+            available_at: now,
+            expires_at: expiresAt,
+            user_marked_complete: false,
+            admin_validated: false,
+            user_id: null, // Set to null since we're using creator_handle
+          })
+          .select();
+
+        if (progressError) {
+          console.error('[Challenge] Error creating day 1 progress:', progressError);
+          console.error('[Challenge] Error details:', JSON.stringify(progressError, null, 2));
+          throw progressError;
+        }
+
+        console.log('[Challenge] Day 1 progress created:', progressInsertData);
+      } else {
+        console.log('[Challenge] Day 1 progress already exists, skipping creation');
       }
 
-      console.log('[Challenge] Day 1 progress created:', progressInsertData);
       console.log('[Challenge] Challenge started successfully');
       
       // Refresh data
