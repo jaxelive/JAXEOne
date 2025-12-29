@@ -9,12 +9,19 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { supabase } from '@/app/integrations/supabase/client';
 import { useCreatorData } from '@/hooks/useCreatorData';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+
+interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  total_days: number;
+}
 
 interface ChallengeDay {
   id: string;
@@ -27,9 +34,20 @@ interface ChallengeDay {
 }
 
 interface DayProgress {
+  id: string;
   day_number: number;
-  status: string;
+  status: 'locked' | 'active' | 'missed' | 'completed' | 'skipped';
+  available_at: string | null;
+  expires_at: string | null;
   completed_at: string | null;
+  completed_late: boolean;
+  skipped_at: string | null;
+}
+
+interface UserChallenge {
+  id: string;
+  started_at: string | null;
+  status: string;
 }
 
 export default function ChallengeListScreen() {
@@ -41,10 +59,20 @@ export default function ChallengeListScreen() {
     Poppins_700Bold,
   });
 
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [challengeDays, setChallengeDays] = useState<ChallengeDay[]>([]);
   const [progress, setProgress] = useState<DayProgress[]>([]);
+  const [userChallenge, setUserChallenge] = useState<UserChallenge | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasStarted, setHasStarted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every second for live countdowns
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchChallengeData = useCallback(async () => {
     if (!creator) return;
@@ -52,29 +80,55 @@ export default function ChallengeListScreen() {
     try {
       setLoading(true);
 
+      // Fetch challenge info (with dynamic total_days)
+      const { data: challengeData, error: challengeError } = await supabase
+        .from('challenges')
+        .select('*')
+        .eq('status', 'published')
+        .limit(1)
+        .single();
+
+      if (challengeError) throw challengeError;
+      setChallenge(challengeData);
+
       // Fetch all challenge days
       const { data: daysData, error: daysError } = await supabase
         .from('challenge_days')
         .select('*')
+        .eq('challenge_id', challengeData.id)
         .order('day_number', { ascending: true });
 
       if (daysError) throw daysError;
       setChallengeDays(daysData || []);
 
+      // Fetch user challenge
+      const { data: userChallengeData, error: userChallengeError } = await supabase
+        .from('user_challenge_progress')
+        .select('*')
+        .eq('user_id', creator.id)
+        .eq('challenge_id', challengeData.id)
+        .maybeSingle();
+
+      if (userChallengeError && userChallengeError.code !== 'PGRST116') {
+        console.error('Error fetching user challenge:', userChallengeError);
+      }
+      setUserChallenge(userChallengeData);
+
       // Fetch user progress
       const { data: progressData, error: progressError } = await supabase
         .from('user_day_progress')
         .select('*')
-        .eq('user_id', creator.id);
+        .eq('user_id', creator.id)
+        .eq('challenge_id', challengeData.id);
 
       if (progressError && progressError.code !== 'PGRST116') {
         console.error('Error fetching progress:', progressError);
       }
 
       setProgress(progressData || []);
-      setHasStarted((progressData || []).length > 0);
     } catch (error: any) {
       console.error('Error fetching challenge data:', error);
+      Alert.alert('Error', 'Failed to load challenge data');
     } finally {
       setLoading(false);
     }
@@ -84,107 +138,297 @@ export default function ChallengeListScreen() {
     fetchChallengeData();
   }, [creator]);
 
-
-
-  const getDayStatus = (dayNumber: number): 'completed' | 'unlocked' | 'locked' => {
+  const getDayStatus = (dayNumber: number): 'locked' | 'active' | 'missed' | 'completed' | 'skipped' => {
     const dayProgress = progress.find((p) => p.day_number === dayNumber);
     
-    if (dayProgress?.status === 'completed') {
+    if (!dayProgress) {
+      return 'locked';
+    }
+
+    const now = new Date();
+    
+    // Check completed
+    if (dayProgress.completed_at) {
       return 'completed';
     }
 
-    // Day 1 is always unlocked if challenge has started
-    if (dayNumber === 1 && hasStarted) {
-      return 'unlocked';
+    // Check skipped
+    if (dayProgress.skipped_at) {
+      return 'skipped';
     }
 
-    // Check if previous day is completed
-    const previousDayProgress = progress.find((p) => p.day_number === dayNumber - 1);
-    if (previousDayProgress?.status === 'completed') {
-      return 'unlocked';
+    // Check if available
+    if (dayProgress.available_at) {
+      const availableAt = new Date(dayProgress.available_at);
+      const expiresAt = dayProgress.expires_at ? new Date(dayProgress.expires_at) : null;
+
+      // Not yet available
+      if (now < availableAt) {
+        return 'locked';
+      }
+
+      // Within 24h window
+      if (expiresAt && now <= expiresAt) {
+        return 'active';
+      }
+
+      // Expired
+      if (expiresAt && now > expiresAt) {
+        return 'missed';
+      }
     }
 
-    return 'locked';
+    return dayProgress.status;
+  };
+
+  const getTimeRemaining = (dayNumber: number): string | null => {
+    const dayProgress = progress.find((p) => p.day_number === dayNumber);
+    if (!dayProgress) return null;
+
+    const now = currentTime;
+    const status = getDayStatus(dayNumber);
+
+    if (status === 'locked' && dayProgress.available_at) {
+      const availableAt = new Date(dayProgress.available_at);
+      const diff = availableAt.getTime() - now.getTime();
+      if (diff > 0) {
+        return formatTimeDiff(diff);
+      }
+    }
+
+    if (status === 'active' && dayProgress.expires_at) {
+      const expiresAt = new Date(dayProgress.expires_at);
+      const diff = expiresAt.getTime() - now.getTime();
+      if (diff > 0) {
+        return formatTimeDiff(diff);
+      }
+    }
+
+    return null;
+  };
+
+  const formatTimeDiff = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const isUrgent = (dayNumber: number): boolean => {
+    const dayProgress = progress.find((p) => p.day_number === dayNumber);
+    if (!dayProgress || !dayProgress.expires_at) return false;
+
+    const now = currentTime;
+    const expiresAt = new Date(dayProgress.expires_at);
+    const diff = expiresAt.getTime() - now.getTime();
+    const twoHours = 2 * 60 * 60 * 1000;
+
+    return diff > 0 && diff < twoHours;
+  };
+
+  const getEndsAtTime = (dayNumber: number): string | null => {
+    const dayProgress = progress.find((p) => p.day_number === dayNumber);
+    if (!dayProgress || !dayProgress.expires_at) return null;
+
+    const expiresAt = new Date(dayProgress.expires_at);
+    return expiresAt.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   const handleStartChallenge = async () => {
-    if (!creator) return;
+    if (!creator || !challenge) return;
 
     try {
-      // Initialize Day 1 as unlocked
-      const { error } = await supabase
+      const now = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      // Create user challenge
+      const { error: challengeError } = await supabase
+        .from('user_challenge_progress')
+        .insert({
+          user_id: creator.id,
+          challenge_id: challenge.id,
+          status: 'in_progress',
+          started_at: now,
+          current_day: 1,
+        });
+
+      if (challengeError) throw challengeError;
+
+      // Get day 1 info
+      const day1 = challengeDays.find((d) => d.day_number === 1);
+      if (!day1) throw new Error('Day 1 not found');
+
+      // Create day 1 progress
+      const { error: progressError } = await supabase
         .from('user_day_progress')
         .insert({
           user_id: creator.id,
+          challenge_id: challenge.id,
+          day_id: day1.id,
           day_number: 1,
-          status: 'unlocked',
+          status: 'active',
+          available_at: now,
+          expires_at: expiresAt,
         });
 
-      if (error) throw error;
+      if (progressError) throw progressError;
 
       // Refresh data
       await fetchChallengeData();
+      Alert.alert('Success', 'Challenge started! Day 1 is now active.');
     } catch (error: any) {
       console.error('Error starting challenge:', error);
       Alert.alert('Error', 'Failed to start challenge');
     }
   };
 
-  const handleMarkComplete = async (day: ChallengeDay, event: any) => {
-    event.stopPropagation();
-    
-    if (!creator) return;
+  const handleCompleteDay = async (day: ChallengeDay) => {
+    if (!creator || !challenge) return;
 
     const status = getDayStatus(day.day_number);
-    if (status === 'locked' || status === 'completed') {
-      return;
-    }
+    if (status !== 'active' && status !== 'missed') return;
 
     try {
+      const now = new Date().toISOString();
+      const dayProgress = progress.find((p) => p.day_number === day.day_number);
+      const isLate = status === 'missed';
+
       // Mark day as completed
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('user_day_progress')
-        .upsert({
-          user_id: creator.id,
-          day_number: day.day_number,
+        .update({
           status: 'completed',
-          completed_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id,day_number',
-        });
+          completed_at: now,
+          completed_late: isLate,
+        })
+        .eq('id', dayProgress!.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // Unlock next day
-      if (day.day_number < 21) {
-        await supabase
-          .from('user_day_progress')
-          .upsert({
-            user_id: creator.id,
-            day_number: day.day_number + 1,
-            status: 'unlocked',
-          }, {
-            onConflict: 'user_id,day_number',
-          });
+      // Unlock next day if exists
+      if (day.day_number < (challenge.total_days || 21)) {
+        const nextDay = challengeDays.find((d) => d.day_number === day.day_number + 1);
+        if (nextDay) {
+          const nextAvailableAt = new Date().toISOString();
+          const nextExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+          // Check if next day progress exists
+          const existingNextDay = progress.find((p) => p.day_number === day.day_number + 1);
+
+          if (existingNextDay) {
+            await supabase
+              .from('user_day_progress')
+              .update({
+                status: 'active',
+                available_at: nextAvailableAt,
+                expires_at: nextExpiresAt,
+              })
+              .eq('id', existingNextDay.id);
+          } else {
+            await supabase
+              .from('user_day_progress')
+              .insert({
+                user_id: creator.id,
+                challenge_id: challenge.id,
+                day_id: nextDay.id,
+                day_number: nextDay.day_number,
+                status: 'active',
+                available_at: nextAvailableAt,
+                expires_at: nextExpiresAt,
+              });
+          }
+        }
       }
 
       // Refresh data
       await fetchChallengeData();
+      Alert.alert('Success', isLate ? 'Day completed (late)!' : 'Day completed!');
     } catch (error: any) {
-      console.error('Error marking day complete:', error);
-      Alert.alert('Error', 'Failed to mark day as complete');
+      console.error('Error completing day:', error);
+      Alert.alert('Error', 'Failed to complete day');
+    }
+  };
+
+  const handleSkipDay = async (day: ChallengeDay) => {
+    if (!creator || !challenge) return;
+
+    const status = getDayStatus(day.day_number);
+    if (status !== 'missed') return;
+
+    try {
+      const now = new Date().toISOString();
+      const dayProgress = progress.find((p) => p.day_number === day.day_number);
+
+      // Mark day as skipped
+      const { error: updateError } = await supabase
+        .from('user_day_progress')
+        .update({
+          status: 'skipped',
+          skipped_at: now,
+        })
+        .eq('id', dayProgress!.id);
+
+      if (updateError) throw updateError;
+
+      // Unlock next day if exists
+      if (day.day_number < (challenge.total_days || 21)) {
+        const nextDay = challengeDays.find((d) => d.day_number === day.day_number + 1);
+        if (nextDay) {
+          const nextAvailableAt = new Date().toISOString();
+          const nextExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+          const existingNextDay = progress.find((p) => p.day_number === day.day_number + 1);
+
+          if (existingNextDay) {
+            await supabase
+              .from('user_day_progress')
+              .update({
+                status: 'active',
+                available_at: nextAvailableAt,
+                expires_at: nextExpiresAt,
+              })
+              .eq('id', existingNextDay.id);
+          } else {
+            await supabase
+              .from('user_day_progress')
+              .insert({
+                user_id: creator.id,
+                challenge_id: challenge.id,
+                day_id: nextDay.id,
+                day_number: nextDay.day_number,
+                status: 'active',
+                available_at: nextAvailableAt,
+                expires_at: nextExpiresAt,
+              });
+          }
+        }
+      }
+
+      // Refresh data
+      await fetchChallengeData();
+      Alert.alert('Success', 'Day skipped. Next day unlocked.');
+    } catch (error: any) {
+      console.error('Error skipping day:', error);
+      Alert.alert('Error', 'Failed to skip day');
     }
   };
 
   const completedCount = progress.filter((p) => p.status === 'completed').length;
-  const progressPercentage = (completedCount / 21) * 100;
+  const totalDays = challenge?.total_days || 21;
+  const progressPercentage = (completedCount / totalDays) * 100;
+  const hasStarted = !!userChallenge;
 
   if (loading || !fontsLoaded) {
     return (
       <View style={styles.container}>
         <Stack.Screen
           options={{
-            title: '21-Day Challenge',
+            title: 'Challenge',
             headerShown: true,
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
@@ -198,11 +442,29 @@ export default function ChallengeListScreen() {
     );
   }
 
+  if (!challenge) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen
+          options={{
+            title: 'Challenge',
+            headerShown: true,
+            headerStyle: { backgroundColor: colors.background },
+            headerTintColor: colors.text,
+          }}
+        />
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>No challenge available</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
         options={{
-          title: '21-Day Challenge',
+          title: challenge.title,
           headerShown: true,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
@@ -217,13 +479,11 @@ export default function ChallengeListScreen() {
             size={64}
             color={colors.primary}
           />
-          <Text style={styles.headerTitle}>21-Day Challenge</Text>
-          <Text style={styles.headerSubtitle}>
-            Complete all 21 days to master your creator journey
-          </Text>
+          <Text style={styles.headerTitle}>{challenge.title}</Text>
+          <Text style={styles.headerSubtitle}>{challenge.description}</Text>
         </View>
 
-        {/* Start Challenge Button - Only show if not started */}
+        {/* Start Challenge Button */}
         {!hasStarted && (
           <TouchableOpacity style={styles.startChallengeButton} onPress={handleStartChallenge}>
             <Text style={styles.startChallengeButtonText}>Start Challenge</Text>
@@ -241,56 +501,68 @@ export default function ChallengeListScreen() {
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
               <Text style={styles.progressLabel}>Your Progress</Text>
-              <Text style={styles.progressValue}>{completedCount}/21 Days</Text>
+              <Text style={styles.progressValue}>{completedCount}/{totalDays} Days</Text>
             </View>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
             </View>
             <Text style={styles.progressText}>
-              {completedCount === 21
+              {completedCount === totalDays
                 ? '🎉 Challenge completed! Amazing work!'
-                : `${21 - completedCount} days remaining`}
+                : `${totalDays - completedCount} days remaining`}
             </Text>
           </View>
         )}
 
-        {/* Days List - Simplified Layout */}
+        {/* Days List */}
         <View style={styles.daysContainer}>
           {challengeDays.map((day, index) => {
             const status = getDayStatus(day.day_number);
-            const isCompleted = status === 'completed';
-            const isLocked = status === 'locked';
+            const timeRemaining = getTimeRemaining(day.day_number);
+            const endsAt = getEndsAtTime(day.day_number);
+            const urgent = isUrgent(day.day_number);
+            const dayProgress = progress.find((p) => p.day_number === day.day_number);
 
             return (
               <React.Fragment key={day.id}>
                 <View
                   style={[
                     styles.dayCard,
-                    isCompleted && styles.dayCardCompleted,
-                    isLocked && styles.dayCardLocked,
+                    status === 'completed' && styles.dayCardCompleted,
+                    status === 'locked' && styles.dayCardLocked,
+                    status === 'active' && urgent && styles.dayCardUrgent,
                   ]}
                 >
                   <View style={styles.dayCardLeft}>
                     <View
                       style={[
                         styles.dayCircle,
-                        isCompleted && styles.dayCircleCompleted,
-                        isLocked && styles.dayCircleLocked,
+                        status === 'completed' && styles.dayCircleCompleted,
+                        status === 'locked' && styles.dayCircleLocked,
+                        status === 'skipped' && styles.dayCircleSkipped,
+                        status === 'active' && urgent && styles.dayCircleUrgent,
                       ]}
                     >
-                      {isCompleted ? (
+                      {status === 'completed' ? (
                         <IconSymbol
                           ios_icon_name="checkmark"
                           android_material_icon_name="check"
                           size={24}
                           color="#FFFFFF"
                         />
-                      ) : isLocked ? (
+                      ) : status === 'locked' ? (
                         <IconSymbol
                           ios_icon_name="lock.fill"
                           android_material_icon_name="lock"
                           size={20}
                           color="#707070"
+                        />
+                      ) : status === 'skipped' ? (
+                        <IconSymbol
+                          ios_icon_name="xmark"
+                          android_material_icon_name="close"
+                          size={24}
+                          color="#FFFFFF"
                         />
                       ) : (
                         <Text style={styles.dayNumber}>{day.day_number}</Text>
@@ -300,7 +572,7 @@ export default function ChallengeListScreen() {
 
                   <View style={styles.dayCardContent}>
                     <View style={styles.dayCardHeader}>
-                      <Text style={[styles.dayTitle, isLocked && styles.dayTitleLocked]}>
+                      <Text style={[styles.dayTitle, status === 'locked' && styles.dayTitleLocked]}>
                         Day {day.day_number}: {day.title}
                       </Text>
                       {day.requires_admin_validation && (
@@ -311,33 +583,84 @@ export default function ChallengeListScreen() {
                     </View>
                     
                     <Text
-                      style={[styles.dayObjective, isLocked && styles.dayObjectiveLocked]}
+                      style={[styles.dayObjective, status === 'locked' && styles.dayObjectiveLocked]}
                       numberOfLines={2}
                     >
                       {day.objective}
                     </Text>
-                    
-                    <View style={styles.dayMeta}>
-                      <View style={styles.dayMetaItem}>
+
+                    {/* Timer Display */}
+                    {status === 'locked' && timeRemaining && (
+                      <View style={styles.timerContainer}>
                         <IconSymbol
                           ios_icon_name="clock.fill"
                           android_material_icon_name="access-time"
-                          size={14}
-                          color={isLocked ? '#707070' : '#6642EF'}
+                          size={16}
+                          color={colors.textSecondary}
                         />
-                        <Text style={[styles.dayMetaText, isLocked && styles.dayMetaTextLocked, !isLocked && styles.dayMetaTextHighlight]}>
-                          {day.time_goal_live} min LIVE
+                        <Text style={styles.timerText}>Unlocks in {timeRemaining}</Text>
+                      </View>
+                    )}
+
+                    {status === 'active' && timeRemaining && (
+                      <View style={styles.activeTimerContainer}>
+                        <View style={[styles.timerBar, urgent && styles.timerBarUrgent]}>
+                          <View style={styles.timerBarFill} />
+                        </View>
+                        <View style={styles.activeTimerRow}>
+                          <Text style={[styles.activeTimerText, urgent && styles.activeTimerTextUrgent]}>
+                            Time left: {timeRemaining}
+                          </Text>
+                          {endsAt && (
+                            <Text style={styles.endsAtText}>Ends at {endsAt}</Text>
+                          )}
+                        </View>
+                        {urgent && (
+                          <View style={styles.urgentBadge}>
+                            <Text style={styles.urgentBadgeText}>⚠️ URGENT</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {status === 'completed' && dayProgress?.completed_at && (
+                      <View style={styles.completedInfo}>
+                        <IconSymbol
+                          ios_icon_name="checkmark.circle.fill"
+                          android_material_icon_name="check-circle"
+                          size={16}
+                          color={colors.success}
+                        />
+                        <Text style={styles.completedText}>
+                          Completed at {new Date(dayProgress.completed_at).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          })}
+                          {dayProgress.completed_late && ' (Late)'}
                         </Text>
                       </View>
-                    </View>
+                    )}
 
-                    {/* Mark Complete Button - Same row */}
-                    {!isCompleted && !isLocked && (
+                    {status === 'skipped' && (
+                      <View style={styles.skippedInfo}>
+                        <Text style={styles.skippedText}>Skipped</Text>
+                      </View>
+                    )}
+
+                    {status === 'missed' && (
+                      <View style={styles.missedInfo}>
+                        <Text style={styles.missedText}>Window expired</Text>
+                      </View>
+                    )}
+
+                    {/* Action Buttons */}
+                    {status === 'active' && (
                       <TouchableOpacity
-                        style={styles.markCompleteButton}
-                        onPress={(e) => handleMarkComplete(day, e)}
+                        style={[styles.actionButton, styles.completeButton]}
+                        onPress={() => handleCompleteDay(day)}
                       >
-                        <Text style={styles.markCompleteButtonText}>Mark Complete</Text>
+                        <Text style={styles.actionButtonText}>Complete Day</Text>
                         <IconSymbol
                           ios_icon_name="checkmark"
                           android_material_icon_name="check"
@@ -345,6 +668,23 @@ export default function ChallengeListScreen() {
                           color="#FFFFFF"
                         />
                       </TouchableOpacity>
+                    )}
+
+                    {status === 'missed' && (
+                      <View style={styles.missedActions}>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.completeAnywayButton]}
+                          onPress={() => handleCompleteDay(day)}
+                        >
+                          <Text style={styles.actionButtonText}>Complete Anyway</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.skipButton]}
+                          onPress={() => handleSkipDay(day)}
+                        >
+                          <Text style={styles.skipButtonText}>Skip & Continue</Text>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -387,6 +727,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.error,
   },
   headerCard: {
     backgroundColor: colors.backgroundAlt,
@@ -483,6 +828,10 @@ const styles = StyleSheet.create({
   dayCardLocked: {
     opacity: 0.5,
   },
+  dayCardUrgent: {
+    borderWidth: 2,
+    borderColor: colors.warning,
+  },
   dayCardLeft: {
     width: 56,
     height: 56,
@@ -500,6 +849,12 @@ const styles = StyleSheet.create({
   },
   dayCircleLocked: {
     backgroundColor: colors.grey,
+  },
+  dayCircleSkipped: {
+    backgroundColor: colors.textSecondary,
+  },
+  dayCircleUrgent: {
+    backgroundColor: colors.warning,
   },
   dayNumber: {
     fontSize: 24,
@@ -541,48 +896,134 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Poppins_400Regular',
     color: colors.textSecondary,
-    marginBottom: 8,
+    marginBottom: 12,
     lineHeight: 20,
   },
   dayObjectiveLocked: {
     color: colors.textTertiary,
   },
-  dayMeta: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  dayMetaItem: {
+  timerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    marginBottom: 8,
   },
-  dayMetaText: {
-    fontSize: 13,
+  timerText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.textSecondary,
+  },
+  activeTimerContainer: {
+    marginBottom: 12,
+  },
+  timerBar: {
+    height: 8,
+    backgroundColor: colors.grey,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  timerBarUrgent: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  timerBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    width: '100%',
+  },
+  activeTimerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  activeTimerText: {
+    fontSize: 18,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.primary,
+  },
+  activeTimerTextUrgent: {
+    color: colors.warning,
+  },
+  endsAtText: {
+    fontSize: 12,
     fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
   },
-  dayMetaTextLocked: {
-    color: colors.textTertiary,
+  urgentBadge: {
+    backgroundColor: colors.warning,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
-  dayMetaTextHighlight: {
-    color: colors.primary,
+  urgentBadgeText: {
+    fontSize: 12,
     fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
   },
-  markCompleteButton: {
-    backgroundColor: colors.primary,
+  completedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  completedText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.success,
+  },
+  skippedInfo: {
+    marginBottom: 8,
+  },
+  skippedText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.textSecondary,
+  },
+  missedInfo: {
+    marginBottom: 8,
+  },
+  missedText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.error,
+  },
+  actionButton: {
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    alignSelf: 'flex-start',
   },
-  markCompleteButtonText: {
+  completeButton: {
+    backgroundColor: colors.primary,
+  },
+  completeAnywayButton: {
+    backgroundColor: colors.primary,
+    flex: 1,
+  },
+  skipButton: {
+    backgroundColor: colors.backgroundAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flex: 1,
+  },
+  actionButtonText: {
     fontSize: 13,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
+  },
+  skipButtonText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
+  },
+  missedActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   weekDivider: {
     flexDirection: 'row',
