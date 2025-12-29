@@ -273,15 +273,16 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     // Check if this is the last question
     if (quizData && currentQuestionIndex === quizData.questions.length - 1) {
       // Last question - immediately show analyzing animation
-      console.log('[QuizComponent] Last question answered, immediately showing analyzing animation');
+      console.log('[QuizComponent] Last question answered, showing analyzing animation');
       
       // Small delay to show the selection, then immediately switch to analyzing
       setTimeout(() => {
+        console.log('[QuizComponent] Setting analyzing to true');
         setAnalyzing(true);
         
-        // Show analyzing for 2 seconds
+        // Show analyzing for 2 seconds, then submit
         setTimeout(() => {
-          setAnalyzing(false);
+          console.log('[QuizComponent] Analyzing complete, submitting quiz');
           handleSubmit();
         }, 2000);
       }, 250);
@@ -329,6 +330,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         `Please answer all questions before submitting. ${unansweredQuestions.length} question(s) remaining.`
       );
       setQuestionLocked(false);
+      setAnalyzing(false);
       return;
     }
 
@@ -382,12 +384,16 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         console.log('[QuizComponent] Quiz attempt saved successfully');
       }
 
+      // Set analyzing to false and show results
+      console.log('[QuizComponent] Setting analyzing to false and showing results');
+      setAnalyzing(false);
       setShowResults(true);
       onComplete(passed, scorePercentage);
     } catch (error: any) {
       console.error('[QuizComponent] Error submitting quiz:', error);
       Alert.alert('Error', 'Failed to submit quiz. Please try again.');
       setQuestionLocked(false);
+      setAnalyzing(false);
     } finally {
       setSubmitting(false);
     }
