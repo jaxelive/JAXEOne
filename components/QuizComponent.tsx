@@ -84,6 +84,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
   // Use a ref to track if we're analyzing - this prevents re-renders from showing the question view
   const isAnalyzingRef = useRef(false);
+  const hasSubmittedRef = useRef(false);
 
   // Animation values
   const progressValue = useSharedValue(0);
@@ -104,7 +105,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
   // Animate progress bar
   useEffect(() => {
-    if (quizData) {
+    if (quizData && !isAnalyzingRef.current) {
       const targetProgress = ((currentQuestionIndex + 1) / quizData.questions.length) * 100;
       progressValue.value = withSpring(targetProgress, {
         damping: 15,
@@ -254,8 +255,9 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   };
 
   const handleAnswerSelect = async (questionId: string, answerId: string) => {
-    if (questionLocked || analyzing || isAnalyzingRef.current) {
-      console.log('[QuizComponent] Question locked or analyzing, ignoring answer selection');
+    // CRITICAL: Check ref first to prevent any interaction during analysis
+    if (isAnalyzingRef.current || analyzing || questionLocked || hasSubmittedRef.current) {
+      console.log('[QuizComponent] Blocked answer selection - analyzing or locked');
       return;
     }
 
@@ -268,27 +270,32 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     setQuestionLocked(true);
     
     // Update selected answer
-    setSelectedAnswers(prev => ({
-      ...prev,
+    const newSelectedAnswers = {
+      ...selectedAnswers,
       [questionId]: answerId,
-    }));
+    };
+    setSelectedAnswers(newSelectedAnswers);
 
     // Check if this is the last question
     if (quizData && currentQuestionIndex === quizData.questions.length - 1) {
-      // Last question - IMMEDIATELY set ref and state to prevent re-renders
-      console.log('[QuizComponent] Last question answered, IMMEDIATELY locking into analyzing state');
+      // Last question - IMMEDIATELY lock everything
+      console.log('[QuizComponent] Last question answered - LOCKING INTO ANALYZING STATE');
       
-      // Set ref first to block any renders
+      // Set BOTH refs immediately to block everything
       isAnalyzingRef.current = true;
+      hasSubmittedRef.current = true;
       
-      // Then set state - this will trigger a re-render but the ref will prevent question view from showing
-      setAnalyzing(true);
-      
-      // Show analyzing for 2 seconds, then submit
+      // Force a small delay before setting state to ensure refs are set
       setTimeout(() => {
-        console.log('[QuizComponent] Analyzing complete, submitting quiz');
-        handleSubmit();
-      }, 2000);
+        // Now set state - the refs will prevent question view from rendering
+        setAnalyzing(true);
+        
+        // Show analyzing for 2 seconds, then submit
+        setTimeout(() => {
+          console.log('[QuizComponent] Analyzing complete, submitting quiz');
+          handleSubmit(newSelectedAnswers);
+        }, 2000);
+      }, 50);
     } else {
       // Not the last question - auto-advance after a short delay
       console.log('[QuizComponent] Auto-advancing to next question');
@@ -313,17 +320,20 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (answersToSubmit?: { [questionId: string]: string }) => {
     if (!quizData) {
       console.error('[QuizComponent] Cannot submit - no quiz data');
       return;
     }
 
-    console.log('[QuizComponent] Submitting quiz');
+    // Use provided answers or current state
+    const finalAnswers = answersToSubmit || selectedAnswers;
+
+    console.log('[QuizComponent] Submitting quiz with answers:', finalAnswers);
 
     // Check if all questions are answered
     const unansweredQuestions = quizData.questions.filter(
-      (q) => !selectedAnswers[q.id]
+      (q) => !finalAnswers[q.id]
     );
 
     if (unansweredQuestions.length > 0) {
@@ -335,6 +345,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       setQuestionLocked(false);
       setAnalyzing(false);
       isAnalyzingRef.current = false;
+      hasSubmittedRef.current = false;
       return;
     }
 
@@ -345,7 +356,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       let correct = 0;
       
       quizData.questions.forEach(question => {
-        const selectedAnswerId = selectedAnswers[question.id];
+        const selectedAnswerId = finalAnswers[question.id];
         const selectedAnswer = question.answers.find(a => a.id === selectedAnswerId);
         if (selectedAnswer?.is_correct) {
           correct++;
@@ -379,7 +390,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
           quiz_id: quizId,
           score: scorePercentage,
           passed: passed,
-          answers: selectedAnswers,
+          answers: finalAnswers,
         });
 
       if (error) {
@@ -399,6 +410,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       setQuestionLocked(false);
       setAnalyzing(false);
       isAnalyzingRef.current = false;
+      hasSubmittedRef.current = false;
     } finally {
       setSubmitting(false);
     }
@@ -415,6 +427,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     setQuestionLocked(false);
     setAnalyzing(false);
     isAnalyzingRef.current = false;
+    hasSubmittedRef.current = false;
   };
 
   const progressAnimStyle = useAnimatedStyle(() => {
@@ -435,6 +448,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     };
   });
 
+  // CRITICAL: Check loading and fonts first
   if (loading || !fontsLoaded) {
     return (
       <View style={styles.container}>
@@ -449,6 +463,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     );
   }
 
+  // Check error state
   if (error || !quizData) {
     return (
       <View style={styles.container}>
@@ -485,7 +500,8 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     );
   }
 
-  // CRITICAL: Check ref first, then state - this prevents any flicker
+  // CRITICAL: Check analyzing state BEFORE results
+  // This ensures we never show the question view after the last answer is selected
   if (isAnalyzingRef.current || analyzing) {
     return (
       <View style={styles.container}>
@@ -549,6 +565,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     );
   }
 
+  // Check results state
   if (showResults) {
     const passed = correctCount >= (quizData.required_correct_answers || 0);
 
@@ -739,7 +756,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
                   answer={answer}
                   isSelected={isSelected}
                   onPress={() => handleAnswerSelect(currentQuestion.id, answer.id)}
-                  disabled={questionLocked}
+                  disabled={questionLocked || isAnalyzingRef.current}
                   index={index}
                 />
               );
@@ -818,16 +835,20 @@ function AnimatedAnswerCard({
   });
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98, { damping: 15 });
-    opacity.value = withTiming(0.8, { duration: 100 });
+    if (!disabled) {
+      scale.value = withSpring(0.98, { damping: 15 });
+      opacity.value = withTiming(0.8, { duration: 100 });
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSequence(
-      withSpring(1.02, { damping: 10 }),
-      withSpring(1, { damping: 15 })
-    );
-    opacity.value = withTiming(1, { duration: 150 });
+    if (!disabled) {
+      scale.value = withSequence(
+        withSpring(1.02, { damping: 10 }),
+        withSpring(1, { damping: 15 })
+      );
+      opacity.value = withTiming(1, { duration: 150 });
+    }
   };
 
   return (
