@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -81,6 +81,9 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+
+  // Use a ref to track if we're analyzing - this prevents re-renders from showing the question view
+  const isAnalyzingRef = useRef(false);
 
   // Animation values
   const progressValue = useSharedValue(0);
@@ -251,7 +254,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   };
 
   const handleAnswerSelect = async (questionId: string, answerId: string) => {
-    if (questionLocked || analyzing) {
+    if (questionLocked || analyzing || isAnalyzingRef.current) {
       console.log('[QuizComponent] Question locked or analyzing, ignoring answer selection');
       return;
     }
@@ -272,10 +275,13 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
     // Check if this is the last question
     if (quizData && currentQuestionIndex === quizData.questions.length - 1) {
-      // Last question - IMMEDIATELY show analyzing animation
-      console.log('[QuizComponent] Last question answered, IMMEDIATELY showing analyzing animation');
+      // Last question - IMMEDIATELY set ref and state to prevent re-renders
+      console.log('[QuizComponent] Last question answered, IMMEDIATELY locking into analyzing state');
       
-      // Set analyzing to true immediately - no delay
+      // Set ref first to block any renders
+      isAnalyzingRef.current = true;
+      
+      // Then set state - this will trigger a re-render but the ref will prevent question view from showing
       setAnalyzing(true);
       
       // Show analyzing for 2 seconds, then submit
@@ -328,6 +334,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       );
       setQuestionLocked(false);
       setAnalyzing(false);
+      isAnalyzingRef.current = false;
       return;
     }
 
@@ -391,6 +398,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       Alert.alert('Error', 'Failed to submit quiz. Please try again.');
       setQuestionLocked(false);
       setAnalyzing(false);
+      isAnalyzingRef.current = false;
     } finally {
       setSubmitting(false);
     }
@@ -406,6 +414,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     setCorrectCount(0);
     setQuestionLocked(false);
     setAnalyzing(false);
+    isAnalyzingRef.current = false;
   };
 
   const progressAnimStyle = useAnimatedStyle(() => {
@@ -476,8 +485,8 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     );
   }
 
-  // Show analyzing animation - THIS MUST BE CHECKED BEFORE RENDERING QUESTIONS
-  if (analyzing) {
+  // CRITICAL: Check ref first, then state - this prevents any flicker
+  if (isAnalyzingRef.current || analyzing) {
     return (
       <View style={styles.container}>
         <Animated.View 
