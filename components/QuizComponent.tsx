@@ -272,10 +272,10 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
     // Check if this is the last question
     if (quizData && currentQuestionIndex === quizData.questions.length - 1) {
-      // Last question - show analyzing animation then submit
-      console.log('[QuizComponent] Last question answered, showing analyzing animation');
+      // Last question - immediately show analyzing animation
+      console.log('[QuizComponent] Last question answered, immediately showing analyzing animation');
       
-      // Wait a bit to show the selection
+      // Small delay to show the selection, then immediately switch to analyzing
       setTimeout(() => {
         setAnalyzing(true);
         
@@ -284,7 +284,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
           setAnalyzing(false);
           handleSubmit();
         }, 2000);
-      }, 300);
+      }, 250);
     } else {
       // Not the last question - auto-advance after a short delay
       console.log('[QuizComponent] Auto-advancing to next question');
@@ -655,7 +655,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     <View style={styles.container}>
       {/* Animated background gradient */}
       <LinearGradient
-        colors={['rgba(102, 66, 239, 0.03)', 'rgba(0, 0, 0, 0)']}
+        colors={['rgba(102, 66, 239, 0.05)', 'rgba(0, 0, 0, 0)']}
         style={styles.backgroundGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -696,6 +696,22 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
             entering={FadeIn.delay(100).duration(300)}
             style={styles.questionCard}
           >
+            <LinearGradient
+              colors={['rgba(102, 66, 239, 0.08)', 'rgba(102, 66, 239, 0.02)']}
+              style={styles.questionCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            
+            <View style={styles.questionIconContainer}>
+              <IconSymbol
+                ios_icon_name="questionmark.circle.fill"
+                android_material_icon_name="help"
+                size={32}
+                color={colors.primary}
+              />
+            </View>
+            
             <Text style={styles.questionText}>
               {currentQuestion.question_text}
             </Text>
@@ -1007,19 +1023,32 @@ const styles = StyleSheet.create({
   },
   questionCard: {
     backgroundColor: colors.backgroundAlt,
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.grey,
-    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
-    elevation: 3,
+    borderRadius: 24,
+    padding: 28,
+    marginBottom: 28,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    boxShadow: '0px 8px 24px rgba(102, 66, 239, 0.25)',
+    elevation: 6,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  questionCardGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  questionIconContainer: {
+    marginBottom: 16,
+    alignSelf: 'flex-start',
   },
   questionText: {
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: 'Poppins_600SemiBold',
     color: colors.text,
-    lineHeight: 30,
+    lineHeight: 33,
   },
   answersContainer: {
     gap: 14,
