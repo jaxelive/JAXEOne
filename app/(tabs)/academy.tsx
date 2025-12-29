@@ -144,7 +144,6 @@ export default function AcademyScreen() {
 
       if (eventsError) {
         console.error('[Academy] Error fetching events:', eventsError);
-        setError(`Events fetch error: ${eventsError.message}`);
       } else {
         console.log('[Academy] Live events found:', eventsData?.length || 0);
         eventsData?.forEach((event) => {
@@ -176,7 +175,6 @@ export default function AcademyScreen() {
 
       if (academyError) {
         console.error('[Academy] Error fetching creator journey content:', academyError);
-        setError(`Creator journey content fetch error: ${academyError.message}`);
       } else {
         console.log('[Academy] Creator journey content fetched:', academyData?.length || 0);
         
@@ -211,13 +209,13 @@ export default function AcademyScreen() {
 
       if (coursesError) {
         console.error('[Academy] Error fetching courses:', coursesError);
-        setError(`Courses fetch error: ${coursesError.message}`);
       } else {
         console.log('[Academy] Courses fetched:', coursesData?.length || 0);
 
-        // For each course, fetch its content items
+        // Initialize coursesWithContent as empty array
         const coursesWithContent: Course[] = [];
         
+        // For each course, fetch its content items
         for (const course of coursesData || []) {
           console.log(`[Academy] Course: ${course.title} - Cover Image: ${course.cover_image_url || 'None'}`);
           
@@ -268,9 +266,6 @@ export default function AcademyScreen() {
 
       if (progressError) {
         console.error('[Academy] Error fetching video progress:', progressError);
-        if (progressError.code !== 'PGRST116') {
-          setError(`Progress fetch error: ${progressError.message}`);
-        }
       } else {
         console.log('[Academy] Video progress fetched:', progressData?.length || 0);
         
@@ -280,7 +275,7 @@ export default function AcademyScreen() {
           let duration = 0;
           
           // Check in courses
-          for (const course of coursesWithContent) {
+          for (const course of courses) {
             const videoItem = course.contentItems.find(
               item => item.content_type === 'video' && item.video?.id === p.video_id
             );
@@ -315,9 +310,6 @@ export default function AcademyScreen() {
 
       if (quizError) {
         console.error('[Academy] Error fetching quiz attempts:', quizError);
-        if (quizError.code !== 'PGRST116') {
-          setError(`Quiz fetch error: ${quizError.message}`);
-        }
       } else {
         console.log('[Academy] Quiz attempts fetched:', quizData?.length || 0);
       }
@@ -559,9 +551,40 @@ export default function AcademyScreen() {
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading academy...</Text>
-          {error && (
-            <Text style={styles.errorText}>{error}</Text>
-          )}
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state if there's an error but no data
+  if (error && courses.length === 0 && liveEvents.length === 0) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen
+          options={{
+            title: 'Academy',
+            headerShown: true,
+            headerStyle: { backgroundColor: colors.background },
+            headerTintColor: colors.text,
+          }}
+        />
+        <View style={styles.centerContent}>
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle.fill"
+            android_material_icon_name="error"
+            size={64}
+            color={colors.error}
+          />
+          <Text style={styles.errorTitle}>Unable to Load Content</Text>
+          <Text style={styles.errorText}>
+            We couldn't load the academy content. Please check your connection and try again.
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={fetchAcademyData}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -589,12 +612,6 @@ export default function AcademyScreen() {
           />
         }
       >
-        {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{error}</Text>
-          </View>
-        )}
-
         {/* Live Events Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Live Events</Text>
@@ -987,26 +1004,32 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
   },
-  errorText: {
+  errorTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
+    textAlign: 'center',
     marginTop: 16,
-    fontSize: 14,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 16,
     fontFamily: 'Poppins_500Medium',
     color: colors.error,
     textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
   },
-  errorBanner: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 12,
+  retryButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.error,
+    paddingHorizontal: 32,
   },
-  errorBannerText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: colors.error,
-    textAlign: 'center',
+  retryButtonText: {
+    fontSize: 16,
+    fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
   },
   emptyState: {
     padding: 40,

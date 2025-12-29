@@ -58,6 +58,8 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
   const [error, setError] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [questionId: string]: string }>({});
+  const [questionLocked, setQuestionLocked] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -91,7 +93,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
       if (quizError) {
         console.error('[QuizComponent] Error fetching quiz:', quizError);
-        setError(`Failed to load quiz: ${quizError.message}`);
+        setError('Failed to load quiz. Please try again.');
         throw quizError;
       }
 
@@ -120,7 +122,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
       if (questionsError) {
         console.error('[QuizComponent] Error fetching questions:', questionsError);
-        setError(`Failed to load questions: ${questionsError.message}`);
+        setError('Failed to load quiz questions. Please try again.');
         throw questionsError;
       }
 
@@ -145,7 +147,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
 
       if (answersError) {
         console.error('[QuizComponent] Error fetching answers:', answersError);
-        setError(`Failed to load answers: ${answersError.message}`);
+        setError('Failed to load quiz answers. Please try again.');
         throw answersError;
       }
 
@@ -176,8 +178,8 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         title: quiz.title,
         description: quiz.description,
         passing_score: quiz.passing_score,
-        required_correct_answers: quiz.required_correct_answers,
-        total_questions: quiz.total_questions,
+        required_correct_answers: quiz.required_correct_answers || 0,
+        total_questions: quiz.total_questions || questions.length,
         questions: questionsWithAnswers,
       };
 
@@ -186,20 +188,53 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       console.log('[QuizComponent] Quiz data set successfully!');
     } catch (error: any) {
       console.error('[QuizComponent] Exception in fetchQuizData:', error);
-      setError(`Failed to load quiz: ${error.message || 'Unknown error'}`);
-      Alert.alert('Error', 'Failed to load quiz. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
       console.log('[QuizComponent] fetchQuizData completed, loading set to false');
     }
   };
 
-  const handleAnswerSelect = (questionId: string, answerId: string) => {
+  const handleAnswerSelect = async (questionId: string, answerId: string) => {
+    if (questionLocked) {
+      console.log('[QuizComponent] Question locked, ignoring answer selection');
+      return;
+    }
+
     console.log('[QuizComponent] Answer selected:', { questionId, answerId });
+    
+    // Lock the question to prevent double-taps
+    setQuestionLocked(true);
+    
+    // Update selected answer
     setSelectedAnswers(prev => ({
       ...prev,
       [questionId]: answerId,
     }));
+
+    // Check if this is the last question
+    if (quizData && currentQuestionIndex === quizData.questions.length - 1) {
+      // Last question - show analyzing animation then submit
+      console.log('[QuizComponent] Last question answered, showing analyzing animation');
+      
+      // Wait a bit to show the selection
+      setTimeout(() => {
+        setAnalyzing(true);
+        
+        // Show analyzing for 2 seconds
+        setTimeout(() => {
+          setAnalyzing(false);
+          handleSubmit();
+        }, 2000);
+      }, 300);
+    } else {
+      // Not the last question - auto-advance after a short delay
+      console.log('[QuizComponent] Auto-advancing to next question');
+      setTimeout(() => {
+        setCurrentQuestionIndex(prev => prev + 1);
+        setQuestionLocked(false);
+      }, 400);
+    }
   };
 
   const handleNext = () => {
@@ -235,6 +270,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         'Incomplete Quiz',
         `Please answer all questions before submitting. ${unansweredQuestions.length} question(s) remaining.`
       );
+      setQuestionLocked(false);
       return;
     }
 
@@ -256,14 +292,15 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
       const scorePercentage = Math.round((correct / totalQuestions) * 100);
       
       // Use required_correct_answers from database to determine pass/fail
-      const passed = correct >= (quizData.required_correct_answers || 0);
+      const requiredCorrect = quizData.required_correct_answers || 0;
+      const passed = correct >= requiredCorrect;
 
       console.log('[QuizComponent] Quiz results:', { 
         correct, 
         totalQuestions, 
         scorePercentage, 
         passed,
-        required: quizData.required_correct_answers 
+        required: requiredCorrect 
       });
 
       setCorrectCount(correct);
@@ -292,6 +329,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     } catch (error: any) {
       console.error('[QuizComponent] Error submitting quiz:', error);
       Alert.alert('Error', 'Failed to submit quiz. Please try again.');
+      setQuestionLocked(false);
     } finally {
       setSubmitting(false);
     }
@@ -304,6 +342,8 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
     setShowResults(false);
     setScore(0);
     setCorrectCount(0);
+    setQuestionLocked(false);
+    setAnalyzing(false);
   };
 
   if (loading || !fontsLoaded) {
@@ -312,9 +352,6 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading quiz...</Text>
-          {error && (
-            <Text style={styles.errorText}>{error}</Text>
-          )}
         </View>
       </View>
     );
@@ -343,6 +380,19 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Show analyzing animation
+  if (analyzing) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.analyzingTitle}>Analyzing your answers...</Text>
+          <Text style={styles.analyzingSubtitle}>Calculating your score</Text>
         </View>
       </View>
     );
@@ -475,6 +525,7 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
                 ]}
                 onPress={() => handleAnswerSelect(currentQuestion.id, answer.id)}
                 activeOpacity={0.7}
+                disabled={questionLocked}
               >
                 <View style={[
                   styles.answerRadio,
@@ -521,43 +572,17 @@ export default function QuizComponent({ quizId, creatorHandle, onComplete, onClo
         </TouchableOpacity>
 
         {currentQuestionIndex === totalQuestions - 1 ? (
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              submitting && styles.submitButtonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={submitting}
-            activeOpacity={0.7}
-          >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={styles.submitButtonText}>Submit Quiz</Text>
-                <IconSymbol
-                  ios_icon_name="checkmark"
-                  android_material_icon_name="check"
-                  size={20}
-                  color="#FFFFFF"
-                />
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={styles.navButton}>
+            <Text style={styles.navButtonTextInfo}>
+              Select answer to finish
+            </Text>
+          </View>
         ) : (
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={handleNext}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.navButtonText}>Next</Text>
-            <IconSymbol
-              ios_icon_name="chevron.right"
-              android_material_icon_name="chevron-right"
-              size={20}
-              color={colors.primary}
-            />
-          </TouchableOpacity>
+          <View style={styles.navButton}>
+            <Text style={styles.navButtonTextInfo}>
+              Select answer to continue
+            </Text>
+          </View>
         )}
       </View>
     </View>
@@ -584,6 +609,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
+  },
+  analyzingTitle: {
+    marginTop: 24,
+    fontSize: 24,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  analyzingSubtitle: {
+    marginTop: 8,
+    fontSize: 16,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   errorTitle: {
     fontSize: 20,
@@ -732,6 +771,11 @@ const styles = StyleSheet.create({
   },
   navButtonTextDisabled: {
     color: colors.grey,
+  },
+  navButtonTextInfo: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.textSecondary,
   },
   submitButton: {
     flexDirection: 'row',
