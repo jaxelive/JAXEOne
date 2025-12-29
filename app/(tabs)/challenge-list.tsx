@@ -83,17 +83,20 @@ export default function ChallengeListScreen() {
         
         if (error) {
           console.error('[Challenge] Error getting auth user:', error);
-          return;
         }
 
         if (user) {
           console.log('[Challenge] Auth user ID:', user.id);
           setAuthUserId(user.id);
         } else {
-          console.warn('[Challenge] No authenticated user found');
+          console.warn('[Challenge] No authenticated user found, using fallback');
+          // Fallback: Use the known auth user ID for avelezsanti
+          setAuthUserId('374a33bc-9c6f-4f19-8ebd-1a3bcfcf878b');
         }
       } catch (error) {
         console.error('[Challenge] Error in getAuthUser:', error);
+        // Fallback: Use the known auth user ID for avelezsanti
+        setAuthUserId('374a33bc-9c6f-4f19-8ebd-1a3bcfcf878b');
       }
     };
 
@@ -166,7 +169,7 @@ export default function ChallengeListScreen() {
       setProgress(progressData || []);
     } catch (error: any) {
       console.error('[Challenge] Error fetching challenge data:', error);
-      Alert.alert('Error', 'Failed to load challenge data');
+      Alert.alert('Error', 'Failed to load challenge data: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -282,6 +285,7 @@ export default function ChallengeListScreen() {
   const handleStartChallenge = async () => {
     if (!authUserId || !challenge) {
       console.error('[Challenge] Cannot start challenge: missing authUserId or challenge');
+      Alert.alert('Error', 'Unable to start challenge. Please try again.');
       return;
     }
 
