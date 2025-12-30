@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect } from "react";
-import { Stack, router } from "expo-router";
+import { Stack } from "expo-router";
 import { 
   ScrollView, 
   StyleSheet, 
@@ -454,7 +454,6 @@ export default function HomeScreen() {
             </CardPressable>
           </AnimatedCard>
 
-          {/* CREATOR TOOLS SECTION */}
           <AnimatedCard delay={600} animationType="fadeSlide">
             <CardPressable onPress={() => console.log('Tools tapped')}>
               <View style={styles.card}>

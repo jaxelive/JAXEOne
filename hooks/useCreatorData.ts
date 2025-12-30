@@ -65,53 +65,12 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       setLoading(true);
       setError(null);
 
-      // First, fetch the creator data
-      const { data: creatorData, error: creatorError } = await supabase
+      // Build the query to fetch creator with manager data and user role
+      const query = supabase
         .from('creators')
-        .select('*')
-        .eq('is_active', true)
-        .eq('creator_handle', creatorHandle)
-        .single();
-
-      if (creatorError) {
-        console.error('[useCreatorData] Creator fetch error:', creatorError);
-        setError(creatorError.message);
-        setCreator(null);
-        setLoading(false);
-        return;
-      }
-
-      if (!creatorData) {
-        console.warn('[useCreatorData] No creator data found for handle:', creatorHandle);
-        setError(`No creator data found for @${creatorHandle}`);
-        setCreator(null);
-        setLoading(false);
-        return;
-      }
-
-      console.log('[useCreatorData] Creator data loaded:', creatorData);
-
-      // Fetch the user linked to this creator to get the role
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, role')
-        .eq('creator_id', creatorData.id)
-        .single();
-
-      let userRole: string | null = null;
-      if (userError) {
-        console.warn('[useCreatorData] User fetch error (might not exist):', userError);
-      } else if (userData) {
-        userRole = userData.role;
-        console.log('[useCreatorData] User role loaded:', userRole);
-      }
-
-      // Fetch manager data if assigned
-      let managerData: ManagerData | null = null;
-      if (creatorData.assigned_manager_id) {
-        const { data: managerRecord, error: managerError } = await supabase
-          .from('managers')
-          .select(`
+        .select(`
+          *,
+          managers:assigned_manager_id (
             id,
             whatsapp,
             avatar_url,
@@ -124,14 +83,42 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
               username,
               role
             )
-          `)
-          .eq('id', creatorData.assigned_manager_id)
-          .single();
+          ),
+          users!users_creator_id_fkey (
+            id,
+            role
+          )
+        `)
+        .eq('is_active', true)
+        .eq('creator_handle', creatorHandle)
+        .limit(1);
 
-        if (managerError) {
-          console.warn('[useCreatorData] Manager fetch error:', managerError);
-        } else if (managerRecord && managerRecord.users) {
-          const managerUser = managerRecord.users as any;
+      // Execute the query
+      console.log('[useCreatorData] Executing query...');
+      const { data, error: fetchError } = await query;
+
+      console.log('[useCreatorData] Query completed', {
+        hasData: !!data,
+        dataLength: data?.length,
+        hasError: !!fetchError,
+        errorMessage: fetchError?.message
+      });
+
+      if (fetchError) {
+        console.error('[useCreatorData] Fetch error:', fetchError);
+        setError(fetchError.message);
+        setCreator(null);
+        setLoading(false);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const creatorData = data[0] as any;
+        
+        // Transform manager data if it exists
+        let managerData: ManagerData | null = null;
+        if (creatorData.managers && creatorData.managers.users) {
+          const managerUser = creatorData.managers.users;
           managerData = {
             id: managerUser.id,
             first_name: managerUser.first_name,
@@ -139,9 +126,9 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
             email: managerUser.email,
             avatar_url: managerUser.avatar_url,
             username: managerUser.username,
-            whatsapp: managerRecord.whatsapp,
+            whatsapp: creatorData.managers.whatsapp,
             role: managerUser.role,
-            manager_avatar_url: managerRecord.avatar_url,
+            manager_avatar_url: creatorData.managers.avatar_url,
           };
           
           console.log('[useCreatorData] Manager data loaded:', {
@@ -150,28 +137,39 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
             managerAvatarUrl: managerData.manager_avatar_url,
           });
         }
+
+        // Extract user role
+        let userRole: string | null = null;
+        if (creatorData.users && Array.isArray(creatorData.users) && creatorData.users.length > 0) {
+          userRole = creatorData.users[0].role;
+          console.log('[useCreatorData] User role loaded:', userRole);
+        }
+
+        const transformedCreator: CreatorData = {
+          ...creatorData,
+          manager: managerData,
+          user_role: userRole,
+        };
+
+        console.log('[useCreatorData] Creator data loaded:', {
+          handle: transformedCreator.creator_handle,
+          name: `${transformedCreator.first_name} ${transformedCreator.last_name}`,
+          diamonds: transformedCreator.total_diamonds,
+          monthlyDiamonds: transformedCreator.diamonds_monthly,
+          liveDays: transformedCreator.live_days_30d,
+          liveHours: Math.floor(transformedCreator.live_duration_seconds_30d / 3600),
+          hasManager: !!managerData,
+          managerName: managerData ? `${managerData.first_name} ${managerData.last_name}` : 'None',
+          userRole: userRole
+        });
+        
+        setCreator(transformedCreator);
+        setError(null);
+      } else {
+        console.warn('[useCreatorData] No creator data found for handle:', creatorHandle);
+        setError(`No creator data found for @${creatorHandle}`);
+        setCreator(null);
       }
-
-      const transformedCreator: CreatorData = {
-        ...creatorData,
-        manager: managerData,
-        user_role: userRole,
-      };
-
-      console.log('[useCreatorData] Final creator data:', {
-        handle: transformedCreator.creator_handle,
-        name: `${transformedCreator.first_name} ${transformedCreator.last_name}`,
-        diamonds: transformedCreator.total_diamonds,
-        monthlyDiamonds: transformedCreator.diamonds_monthly,
-        liveDays: transformedCreator.live_days_30d,
-        liveHours: Math.floor(transformedCreator.live_duration_seconds_30d / 3600),
-        hasManager: !!managerData,
-        managerName: managerData ? `${managerData.first_name} ${managerData.last_name}` : 'None',
-        userRole: userRole
-      });
-      
-      setCreator(transformedCreator);
-      setError(null);
     } catch (err: any) {
       console.error('[useCreatorData] Unexpected error:', err);
       setError(err?.message || 'Failed to fetch creator data');
