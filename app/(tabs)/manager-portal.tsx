@@ -17,9 +17,6 @@ import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { supabase } from '@/app/integrations/supabase/client';
-import { useCreatorData } from '@/hooks/useCreatorData';
-
-const CREATOR_HANDLE = 'avelezsanti';
 
 interface ManagerData {
   id: string;
@@ -62,7 +59,6 @@ export default function ManagerPortalScreen() {
     Poppins_700Bold,
   });
 
-  const { creator, loading: creatorLoading } = useCreatorData(CREATOR_HANDLE);
   const [manager, setManager] = useState<ManagerData | null>(null);
   const [assignedCreators, setAssignedCreators] = useState<CreatorData[]>([]);
   const [stats, setStats] = useState<ManagerStats>({
@@ -74,114 +70,146 @@ export default function ManagerPortalScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isManager, setIsManager] = useState(false);
 
   const fetchManagerData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log('[ManagerPortal] Fetching manager data for creator:', CREATOR_HANDLE);
+      console.log('[ManagerPortal] Fetching authenticated user');
 
-      // Get the logged-in creator's manager ID
-      if (!creator?.assigned_manager_id) {
-        console.log('[ManagerPortal] No manager assigned to creator');
-        setError('You do not have a manager assigned yet.');
+      // Get the authenticated user
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('[ManagerPortal] Auth error:', authError);
+        setError('Authentication error. Please log in again.');
         setLoading(false);
         return;
       }
 
-      const managerId = creator.assigned_manager_id;
-      console.log('[ManagerPortal] Manager ID:', managerId);
+      if (!authUser) {
+        console.warn('[ManagerPortal] No authenticated user');
+        setError('You must be logged in to access the Manager Portal.');
+        setLoading(false);
+        return;
+      }
 
-      // Fetch manager details
+      console.log('[ManagerPortal] Authenticated user ID:', authUser.id);
+
+      // Fetch the user record to check their role
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, role, first_name, last_name, email, avatar_url')
+        .eq('auth_user_id', authUser.id)
+        .single();
+
+      if (userError) {
+        console.error('[ManagerPortal] User fetch error:', userError);
+        setError('Could not fetch user data.');
+        setLoading(false);
+        return;
+      }
+
+      if (!userData) {
+        console.warn('[ManagerPortal] No user record found');
+        setError('User record not found.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[ManagerPortal] User data:', userData);
+
+      // Check if user has manager role
+      if (userData.role !== 'manager') {
+        console.warn('[ManagerPortal] User is not a manager. Role:', userData.role);
+        setError('You do not have manager access. This portal is only available to users with the Manager role.');
+        setIsManager(false);
+        setLoading(false);
+        return;
+      }
+
+      setIsManager(true);
+      console.log('[ManagerPortal] User is a manager');
+
+      // Fetch the manager record for this user
       const { data: managerData, error: managerError } = await supabase
         .from('managers')
-        .select(`
-          id,
-          user_id,
-          whatsapp,
-          tiktok_handle,
-          avatar_url,
-          promoted_to_manager_at,
-          users:user_id (
-            id,
-            first_name,
-            last_name,
-            email,
-            avatar_url
-          )
-        `)
-        .eq('id', managerId)
+        .select('id, whatsapp, tiktok_handle, avatar_url, promoted_to_manager_at')
+        .eq('user_id', userData.id)
         .single();
 
       if (managerError) {
         console.error('[ManagerPortal] Manager fetch error:', managerError);
-        setError(managerError.message);
+        setError('Could not fetch manager profile.');
         setLoading(false);
         return;
       }
 
-      if (managerData && managerData.users) {
-        const managerUser = managerData.users as any;
-        const managerInfo: ManagerData = {
-          id: managerData.id,
-          user_id: managerUser.id,
-          first_name: managerUser.first_name,
-          last_name: managerUser.last_name,
-          email: managerUser.email,
-          avatar_url: managerData.avatar_url || managerUser.avatar_url,
-          whatsapp: managerData.whatsapp,
-          tiktok_handle: managerData.tiktok_handle,
-          promoted_to_manager_at: managerData.promoted_to_manager_at,
-        };
+      if (!managerData) {
+        console.warn('[ManagerPortal] No manager record found for user');
+        setError('Manager profile not found. Please contact support.');
+        setLoading(false);
+        return;
+      }
 
-        console.log('[ManagerPortal] Manager data loaded:', managerInfo);
-        setManager(managerInfo);
+      const managerInfo: ManagerData = {
+        id: managerData.id,
+        user_id: userData.id,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        email: userData.email,
+        avatar_url: managerData.avatar_url || userData.avatar_url,
+        whatsapp: managerData.whatsapp,
+        tiktok_handle: managerData.tiktok_handle,
+        promoted_to_manager_at: managerData.promoted_to_manager_at,
+      };
 
-        // Fetch all creators assigned to this manager
-        const { data: creatorsData, error: creatorsError } = await supabase
-          .from('creators')
-          .select('id, first_name, last_name, creator_handle, email, region, graduation_status, total_diamonds, phone, avatar_url, profile_picture_url')
-          .eq('assigned_manager_id', managerId)
-          .eq('is_active', true)
-          .order('total_diamonds', { ascending: false });
+      console.log('[ManagerPortal] Manager data loaded:', managerInfo);
+      setManager(managerInfo);
 
-        if (creatorsError) {
-          console.error('[ManagerPortal] Creators fetch error:', creatorsError);
-        } else {
-          console.log('[ManagerPortal] Assigned creators loaded:', creatorsData?.length || 0);
-          setAssignedCreators(creatorsData || []);
+      // Fetch all creators assigned to this manager
+      const { data: creatorsData, error: creatorsError } = await supabase
+        .from('creators')
+        .select('id, first_name, last_name, creator_handle, email, region, graduation_status, total_diamonds, phone, avatar_url, profile_picture_url')
+        .eq('assigned_manager_id', managerData.id)
+        .eq('is_active', true)
+        .order('total_diamonds', { ascending: false });
 
-          // Calculate stats
-          const totalCreators = creatorsData?.length || 0;
-          const totalRookies = creatorsData?.filter(c => 
-            !c.graduation_status || 
-            c.graduation_status.toLowerCase().includes('rookie') ||
-            c.graduation_status.toLowerCase().includes('new')
-          ).length || 0;
-          const totalGraduated = creatorsData?.filter(c => 
-            c.graduation_status && 
-            (c.graduation_status.toLowerCase().includes('silver') || 
-             c.graduation_status.toLowerCase().includes('gold'))
-          ).length || 0;
-          const collectiveDiamonds = creatorsData?.reduce((sum, c) => sum + (c.total_diamonds || 0), 0) || 0;
-
-          setStats({
-            totalCreators,
-            totalRookies,
-            totalGraduated,
-            collectiveDiamonds,
-          });
-
-          console.log('[ManagerPortal] Stats calculated:', {
-            totalCreators,
-            totalRookies,
-            totalGraduated,
-            collectiveDiamonds,
-          });
-        }
+      if (creatorsError) {
+        console.error('[ManagerPortal] Creators fetch error:', creatorsError);
       } else {
-        setError('Manager not found');
+        console.log('[ManagerPortal] Assigned creators loaded:', creatorsData?.length || 0);
+        setAssignedCreators(creatorsData || []);
+
+        // Calculate stats
+        const totalCreators = creatorsData?.length || 0;
+        const totalRookies = creatorsData?.filter(c => 
+          !c.graduation_status || 
+          c.graduation_status.toLowerCase().includes('rookie') ||
+          c.graduation_status.toLowerCase().includes('new')
+        ).length || 0;
+        const totalGraduated = creatorsData?.filter(c => 
+          c.graduation_status && 
+          (c.graduation_status.toLowerCase().includes('silver') || 
+           c.graduation_status.toLowerCase().includes('gold'))
+        ).length || 0;
+        const collectiveDiamonds = creatorsData?.reduce((sum, c) => sum + (c.total_diamonds || 0), 0) || 0;
+
+        setStats({
+          totalCreators,
+          totalRookies,
+          totalGraduated,
+          collectiveDiamonds,
+        });
+
+        console.log('[ManagerPortal] Stats calculated:', {
+          totalCreators,
+          totalRookies,
+          totalGraduated,
+          collectiveDiamonds,
+        });
       }
     } catch (err: any) {
       console.error('[ManagerPortal] Unexpected error:', err);
@@ -189,13 +217,11 @@ export default function ManagerPortalScreen() {
     } finally {
       setLoading(false);
     }
-  }, [creator]);
+  }, []);
 
   useEffect(() => {
-    if (creator && !creatorLoading) {
-      fetchManagerData();
-    }
-  }, [creator, creatorLoading]);
+    fetchManagerData();
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -255,7 +281,7 @@ export default function ManagerPortalScreen() {
     return colors.primary;
   };
 
-  if (!fontsLoaded || loading || creatorLoading) {
+  if (!fontsLoaded || loading) {
     return (
       <>
         <Stack.Screen
@@ -274,7 +300,7 @@ export default function ManagerPortalScreen() {
     );
   }
 
-  if (error || !manager) {
+  if (error || !manager || !isManager) {
     return (
       <>
         <Stack.Screen
@@ -292,9 +318,12 @@ export default function ManagerPortalScreen() {
             size={64}
             color={colors.error}
           />
-          <Text style={styles.errorText}>{error || 'Manager not found'}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchManagerData}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={styles.errorText}>{error || 'Access denied'}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => router.back()}
+          >
+            <Text style={styles.retryButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </>

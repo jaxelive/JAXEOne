@@ -1,14 +1,11 @@
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
-import { useCreatorData } from '@/hooks/useCreatorData';
+import { supabase } from '@/app/integrations/supabase/client';
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
-
-// Hardcoded creator handle - no authentication needed
-const CREATOR_HANDLE = 'avelezsanti';
 
 interface ToolItem {
   id: string;
@@ -106,10 +103,72 @@ export default function ToolsScreen() {
     Poppins_700Bold,
   });
 
-  const { creator, loading } = useCreatorData(CREATOR_HANDLE);
+  const [isManager, setIsManager] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Check if user is a manager
-  const isManager = creator?.user_role === 'manager';
+  useEffect(() => {
+    const checkManagerRole = async () => {
+      try {
+        console.log('[ToolsScreen] Checking manager role');
+        
+        // Get the authenticated user
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !authUser) {
+          console.warn('[ToolsScreen] No authenticated user or auth error:', authError);
+          setIsManager(false);
+          setLoading(false);
+          return;
+        }
+
+        console.log('[ToolsScreen] Authenticated user ID:', authUser.id);
+
+        // Fetch the user record to check their role
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('auth_user_id', authUser.id)
+          .single();
+
+        if (userError) {
+          console.warn('[ToolsScreen] User fetch error:', userError);
+          setIsManager(false);
+        } else if (userData) {
+          const hasManagerRole = userData.role === 'manager';
+          console.log('[ToolsScreen] User role:', userData.role, 'Is manager:', hasManagerRole);
+          setIsManager(hasManagerRole);
+        } else {
+          console.warn('[ToolsScreen] No user data found');
+          setIsManager(false);
+        }
+      } catch (err) {
+        console.error('[ToolsScreen] Error checking manager role:', err);
+        setIsManager(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkManagerRole();
+  }, []);
+
+  if (!fontsLoaded || loading) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: 'Tools',
+            headerShown: true,
+            headerStyle: { backgroundColor: colors.background },
+            headerTintColor: colors.text,
+          }}
+        />
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </>
+    );
+  }
 
   return (
     <>

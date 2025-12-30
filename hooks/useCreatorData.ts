@@ -38,6 +38,7 @@ export interface CreatorData {
   is_active: boolean;
   manager?: ManagerData | null;
   user_role?: string | null;
+  auth_user_id?: string | null;
 }
 
 export interface CreatorStats {
@@ -65,6 +66,27 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       setLoading(true);
       setError(null);
 
+      // Get the authenticated user
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('[useCreatorData] Auth error:', authError);
+        setError('Authentication error');
+        setCreator(null);
+        setLoading(false);
+        return;
+      }
+
+      if (!authUser) {
+        console.warn('[useCreatorData] No authenticated user');
+        setError('Not authenticated');
+        setCreator(null);
+        setLoading(false);
+        return;
+      }
+
+      console.log('[useCreatorData] Authenticated user ID:', authUser.id);
+
       // First, fetch the creator data
       const { data: creatorData, error: creatorError } = await supabase
         .from('creators')
@@ -91,11 +113,11 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
 
       console.log('[useCreatorData] Creator data loaded:', creatorData);
 
-      // Fetch the user linked to this creator to get the role
+      // Fetch the user linked to the authenticated user to get the role
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, role')
-        .eq('creator_id', creatorData.id)
+        .select('id, role, creator_id')
+        .eq('auth_user_id', authUser.id)
         .single();
 
       let userRole: string | null = null;
@@ -103,7 +125,7 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
         console.warn('[useCreatorData] User fetch error (might not exist):', userError);
       } else if (userData) {
         userRole = userData.role;
-        console.log('[useCreatorData] User role loaded:', userRole);
+        console.log('[useCreatorData] User role loaded:', userRole, 'for user:', userData.id);
       }
 
       // Fetch manager data if assigned
@@ -156,6 +178,7 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
         ...creatorData,
         manager: managerData,
         user_role: userRole,
+        auth_user_id: authUser.id,
       };
 
       console.log('[useCreatorData] Final creator data:', {
@@ -167,7 +190,8 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
         liveHours: Math.floor(transformedCreator.live_duration_seconds_30d / 3600),
         hasManager: !!managerData,
         managerName: managerData ? `${managerData.first_name} ${managerData.last_name}` : 'None',
-        userRole: userRole
+        userRole: userRole,
+        authUserId: authUser.id,
       });
       
       setCreator(transformedCreator);
