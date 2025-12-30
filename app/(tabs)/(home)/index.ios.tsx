@@ -454,6 +454,71 @@ export default function HomeScreen() {
             </CardPressable>
           </AnimatedCard>
 
+          {/* CREATOR TOOLS SECTION */}
+          <AnimatedCard delay={600} animationType="fadeSlide">
+            <CardPressable onPress={() => console.log('Tools tapped')}>
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardEmoji}>🛠️</Text>
+                  <View style={styles.cardHeaderText}>
+                    <Text style={styles.cardTitleLarge}>Creator Tools</Text>
+                    <Text style={styles.cardSubtitle}>Grow your presence</Text>
+                  </View>
+                </View>
+                <View style={styles.toolsGrid}>
+                  <TouchableOpacity style={styles.toolButton}>
+                    <LinearGradient
+                      colors={['#DBEAFE', '#BFDBFE']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.toolIconContainer}
+                    >
+                      <IconSymbol 
+                        ios_icon_name="megaphone.fill" 
+                        android_material_icon_name="campaign" 
+                        size={24} 
+                        color={colors.primary} 
+                      />
+                    </LinearGradient>
+                    <Text style={styles.toolButtonText}>Promote</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.toolButton}>
+                    <LinearGradient
+                      colors={['#FED7AA', '#FDBA74']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.toolIconContainer}
+                    >
+                      <IconSymbol 
+                        ios_icon_name="flame.fill" 
+                        android_material_icon_name="whatshot" 
+                        size={24} 
+                        color={colors.warning} 
+                      />
+                    </LinearGradient>
+                    <Text style={styles.toolButtonText}>Battles</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.toolButton}>
+                    <LinearGradient
+                      colors={['#E9D5FF', '#D8B4FE']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.toolIconContainer}
+                    >
+                      <IconSymbol 
+                        ios_icon_name="wand.and.stars" 
+                        android_material_icon_name="auto-awesome" 
+                        size={24} 
+                        color={colors.primary} 
+                      />
+                    </LinearGradient>
+                    <Text style={styles.toolButtonText}>Flyer AI</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </CardPressable>
+          </AnimatedCard>
+
           <AnimatedCard delay={700} animationType="fadeSlide">
             <CardPressable onPress={() => console.log('Manager tapped')}>
               <View style={styles.card}>
@@ -936,5 +1001,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
+  },
+  toolsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  toolButton: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  toolIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  toolButtonText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+    textAlign: 'center',
   },
 });
