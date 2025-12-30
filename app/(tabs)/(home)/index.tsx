@@ -178,7 +178,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (creator) {
-      console.log('[HomeScreen] Creator loaded:', {
+      console.log('[HomeScreen] 🎯 Creator loaded - CHECKING MANAGER BADGE:', {
         handle: creator.creator_handle,
         name: `${creator.first_name} ${creator.last_name}`,
         monthlyDiamonds: creator.diamonds_monthly,
@@ -189,7 +189,8 @@ export default function HomeScreen() {
         managerName: creator.manager ? `${creator.manager.first_name} ${creator.manager.last_name}` : 'None',
         creatorType: creator.creator_type,
         userRole: creator.user_role,
-        isManager: creator.user_role === 'manager'
+        isManager: creator.user_role === 'manager',
+        '🔥 SHOULD SHOW MANAGER BADGE': creator.user_role === 'manager' ? 'YES ✅' : 'NO ❌'
       });
       fetchBattleData();
       fetchChallengeData();
@@ -618,7 +619,11 @@ export default function HomeScreen() {
 
   // Check if user is a manager
   const isManager = creator.user_role === 'manager';
-  console.log('[HomeScreen] Rendering - isManager:', isManager, 'user_role:', creator.user_role);
+  console.log('[HomeScreen] 🎨 Rendering - Manager Badge Check:', {
+    isManager,
+    user_role: creator.user_role,
+    willRenderBadge: isManager ? 'YES ✅' : 'NO ❌'
+  });
 
   // Calculate tier and next tier from real data with region-based logic
   const currentDiamonds = creator.diamonds_monthly || 0;

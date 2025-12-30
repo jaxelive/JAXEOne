@@ -65,7 +65,7 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       setLoading(true);
       setError(null);
 
-      // First, fetch the creator data with manager info
+      // Fetch creator data with manager info AND user role in a single query
       const { data: creatorData, error: creatorError } = await supabase
         .from('creators')
         .select(`
@@ -83,6 +83,10 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
               username,
               role
             )
+          ),
+          users!users_creator_id_fkey (
+            id,
+            role
           )
         `)
         .eq('is_active', true)
@@ -92,7 +96,8 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       console.log('[useCreatorData] Creator query completed', {
         hasData: !!creatorData,
         hasError: !!creatorError,
-        errorMessage: creatorError?.message
+        errorMessage: creatorError?.message,
+        rawData: creatorData
       });
 
       if (creatorError) {
@@ -111,24 +116,17 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
         return;
       }
 
-      // Now fetch the user role separately using the creator's user_id
+      // Extract user role from the joined users table
       let userRole: string | null = null;
-      if (creatorData.user_id) {
-        console.log('[useCreatorData] Fetching user role for user_id:', creatorData.user_id);
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', creatorData.user_id)
-          .single();
-
-        if (userError) {
-          console.error('[useCreatorData] Error fetching user role:', userError);
-        } else if (userData) {
-          userRole = userData.role;
-          console.log('[useCreatorData] User role fetched:', userRole);
-        }
+      if (creatorData.users && Array.isArray(creatorData.users) && creatorData.users.length > 0) {
+        userRole = creatorData.users[0].role;
+        console.log('[useCreatorData] User role extracted from join:', userRole);
+      } else if (creatorData.users && !Array.isArray(creatorData.users)) {
+        // Handle case where it's a single object instead of array
+        userRole = (creatorData.users as any).role;
+        console.log('[useCreatorData] User role extracted from single object:', userRole);
       } else {
-        console.log('[useCreatorData] No user_id found on creator record');
+        console.log('[useCreatorData] No user role found in joined data');
       }
 
       // Transform manager data if it exists
@@ -160,7 +158,7 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
         user_role: userRole,
       };
 
-      console.log('[useCreatorData] Creator data loaded:', {
+      console.log('[useCreatorData] ✅ Creator data loaded successfully:', {
         handle: transformedCreator.creator_handle,
         name: `${transformedCreator.first_name} ${transformedCreator.last_name}`,
         diamonds: transformedCreator.total_diamonds,
@@ -170,7 +168,8 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
         hasManager: !!managerData,
         managerName: managerData ? `${managerData.first_name} ${managerData.last_name}` : 'None',
         userRole: userRole,
-        isManager: userRole === 'manager'
+        isManager: userRole === 'manager',
+        '🔥 MANAGER BADGE SHOULD DISPLAY': userRole === 'manager' ? 'YES ✅' : 'NO ❌'
       });
       
       setCreator(transformedCreator);
