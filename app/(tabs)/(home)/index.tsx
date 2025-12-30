@@ -715,6 +715,11 @@ export default function HomeScreen() {
                     <View style={styles.regionBadge}>
                       <Text style={styles.regionBadgeText}>Creator</Text>
                     </View>
+                    {creator.user_role === 'manager' && (
+                      <View style={styles.managerBadge}>
+                        <Text style={styles.managerBadgeText}>Manager</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               </View>
@@ -1553,6 +1558,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Poppins_500Medium',
     color: '#A0A0A0',
+  },
+  managerBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  managerBadgeText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    color: '#FFFFFF',
   },
   headerIcons: {
     flexDirection: 'row',
