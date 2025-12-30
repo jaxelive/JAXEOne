@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/app/integrations/supabase/client';
+import { useSupabase } from '@/contexts/SupabaseContext';
 
 export interface ManagerData {
   id: string;
@@ -59,31 +60,28 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
   const [creator, setCreator] = useState<CreatorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { session, user: authUser, loading: authLoading } = useSupabase();
 
   const fetchCreatorData = useCallback(async () => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      console.log('[useCreatorData] Waiting for auth to finish loading...');
+      return;
+    }
+
+    // Check if user is authenticated
+    if (!authUser || !session) {
+      console.warn('[useCreatorData] No authenticated user or session');
+      setError('Not authenticated. Please log in.');
+      setCreator(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       console.log('[useCreatorData] Starting fetch for creator:', creatorHandle);
       setLoading(true);
       setError(null);
-
-      // Get the authenticated user using the modern method
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError) {
-        console.error('[useCreatorData] Auth error:', authError);
-        setError('Authentication error');
-        setCreator(null);
-        setLoading(false);
-        return;
-      }
-
-      if (!authUser) {
-        console.warn('[useCreatorData] No authenticated user');
-        setError('Not authenticated');
-        setCreator(null);
-        setLoading(false);
-        return;
-      }
 
       console.log('[useCreatorData] Authenticated user ID:', authUser.id);
 
@@ -204,12 +202,12 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       setLoading(false);
       console.log('[useCreatorData] Fetch complete');
     }
-  }, [creatorHandle]);
+  }, [creatorHandle, authUser, session, authLoading]);
 
   useEffect(() => {
-    console.log('[useCreatorData] Effect triggered for handle:', creatorHandle);
+    console.log('[useCreatorData] Effect triggered - authLoading:', authLoading, 'authUser:', !!authUser);
     fetchCreatorData();
-  }, [creatorHandle, fetchCreatorData]);
+  }, [fetchCreatorData]);
 
   const getCreatorStats = (): CreatorStats | null => {
     if (!creator) {
@@ -254,7 +252,7 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
 
   return {
     creator,
-    loading,
+    loading: loading || authLoading,
     error,
     stats: getCreatorStats(),
     refetch: fetchCreatorData,
