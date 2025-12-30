@@ -93,7 +93,7 @@ const MANAGER_TOOLS: ToolItem[] = [
     description: 'Manage your creators',
     icon: 'person.3.fill',
     androidIcon: 'groups',
-    route: '/(tabs)/manager-portal',
+    route: '/(tabs)/(home)/',
     color: '#10B981',
   },
 ];
@@ -145,8 +145,8 @@ export default function ToolsScreen() {
                   key={tool.id}
                   style={styles.toolCard}
                   onPress={() => {
-                    console.log(`Navigating to ${tool.title} at route: ${tool.route}`);
-                    router.push(tool.route as any);
+                    console.log(`${tool.title} tapped`);
+                    // TODO: Navigate to Manager Portal
                   }}
                   activeOpacity={0.7}
                 >
@@ -176,10 +176,7 @@ export default function ToolsScreen() {
               <TouchableOpacity
                 key={tool.id}
                 style={styles.toolCard}
-                onPress={() => {
-                  console.log(`Navigating to ${tool.title} at route: ${tool.route}`);
-                  router.push(tool.route as any);
-                }}
+                onPress={() => router.push(tool.route as any)}
                 activeOpacity={0.7}
               >
                 <View style={[styles.toolIconContainer, { backgroundColor: `${tool.color}20` }]}>
