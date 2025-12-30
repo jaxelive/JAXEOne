@@ -46,6 +46,7 @@ export default function ProfileScreen() {
         handle: creator.creator_handle,
         profile_picture_url: creator.profile_picture_url,
         avatar_url: creator.avatar_url,
+        user_role: creator.user_role,
       });
       setFirstName(creator.first_name || '');
       setLastName(creator.last_name || '');
@@ -234,6 +235,9 @@ export default function ProfileScreen() {
       </View>
     );
   }
+
+  // Check if user is a manager
+  const isManager = creator.user_role === 'manager';
 
   return (
     <>
@@ -459,7 +463,19 @@ export default function ProfileScreen() {
           
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Region</Text>
-            <Text style={styles.infoValue}>{creator.region || 'Not set'}</Text>
+            <View style={styles.badgeRow}>
+              <Text style={styles.infoValue}>{creator.region || 'Not set'}</Text>
+              {creator.creator_type && creator.creator_type.length > 0 && creator.creator_type.map((type, index) => (
+                <View key={index} style={styles.creatorBadge}>
+                  <Text style={styles.creatorBadgeText}>{type}</Text>
+                </View>
+              ))}
+              {isManager && (
+                <View style={styles.managerBadge}>
+                  <Text style={styles.managerBadgeText}>Manager</Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={styles.divider} />
           
@@ -703,6 +719,34 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.text,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  creatorBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  creatorBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  managerBadge: {
+    backgroundColor: colors.success,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  managerBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
   },
   divider: {
     height: 1,

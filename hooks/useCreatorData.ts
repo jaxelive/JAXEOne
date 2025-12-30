@@ -37,6 +37,7 @@ export interface CreatorData {
   assigned_manager_id: string | null;
   is_active: boolean;
   manager?: ManagerData | null;
+  user_role?: string | null;
 }
 
 export interface CreatorStats {
@@ -64,7 +65,7 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       setLoading(true);
       setError(null);
 
-      // Build the query to fetch creator with manager data
+      // Build the query to fetch creator with manager data and user role
       const query = supabase
         .from('creators')
         .select(`
@@ -82,6 +83,10 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
               username,
               role
             )
+          ),
+          users!users_creator_id_fkey (
+            id,
+            role
           )
         `)
         .eq('is_active', true)
@@ -133,9 +138,17 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
           });
         }
 
+        // Extract user role
+        let userRole: string | null = null;
+        if (creatorData.users && Array.isArray(creatorData.users) && creatorData.users.length > 0) {
+          userRole = creatorData.users[0].role;
+          console.log('[useCreatorData] User role loaded:', userRole);
+        }
+
         const transformedCreator: CreatorData = {
           ...creatorData,
           manager: managerData,
+          user_role: userRole,
         };
 
         console.log('[useCreatorData] Creator data loaded:', {
@@ -146,7 +159,8 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
           liveDays: transformedCreator.live_days_30d,
           liveHours: Math.floor(transformedCreator.live_duration_seconds_30d / 3600),
           hasManager: !!managerData,
-          managerName: managerData ? `${managerData.first_name} ${managerData.last_name}` : 'None'
+          managerName: managerData ? `${managerData.first_name} ${managerData.last_name}` : 'None',
+          userRole: userRole
         });
         
         setCreator(transformedCreator);
