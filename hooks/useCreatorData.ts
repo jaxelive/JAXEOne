@@ -116,9 +116,9 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
       // Fetch the user linked to the authenticated user to get the role
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, role, creator_id')
+        .select('id, role')
         .eq('auth_user_id', authUser.id)
-        .single();
+        .maybeSingle();
 
       let userRole: string | null = null;
       if (userError) {
@@ -209,7 +209,7 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
   useEffect(() => {
     console.log('[useCreatorData] Effect triggered for handle:', creatorHandle);
     fetchCreatorData();
-  }, [creatorHandle]);
+  }, [creatorHandle, fetchCreatorData]);
 
   const getCreatorStats = (): CreatorStats | null => {
     if (!creator) {
