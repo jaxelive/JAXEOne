@@ -618,6 +618,7 @@ export default function HomeScreen() {
 
   // Check if user is a manager
   const isManager = creator.user_role === 'manager';
+  console.log('[HomeScreen] Rendering - isManager:', isManager, 'user_role:', creator.user_role);
 
   // Calculate tier and next tier from real data with region-based logic
   const currentDiamonds = creator.diamonds_monthly || 0;
@@ -1566,15 +1567,18 @@ const styles = StyleSheet.create({
     color: '#A0A0A0',
   },
   managerBadge: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: '#6642EF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
   },
   managerBadgeText: {
-    fontSize: 11,
-    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   headerIcons: {
     flexDirection: 'row',
