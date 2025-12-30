@@ -93,7 +93,7 @@ const MANAGER_TOOLS: ToolItem[] = [
     description: 'Manage your creators',
     icon: 'person.3.fill',
     androidIcon: 'groups',
-    route: '/(tabs)/(home)/',
+    route: '/(tabs)/manager-portal',
     color: '#10B981',
   },
 ];
@@ -145,8 +145,8 @@ export default function ToolsScreen() {
                   key={tool.id}
                   style={styles.toolCard}
                   onPress={() => {
-                    console.log(`${tool.title} tapped`);
-                    // TODO: Navigate to Manager Portal
+                    console.log(`${tool.title} tapped - navigating to ${tool.route}`);
+                    router.push(tool.route as any);
                   }}
                   activeOpacity={0.7}
                 >
