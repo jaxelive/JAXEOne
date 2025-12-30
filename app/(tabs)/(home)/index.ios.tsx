@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   managerBadge: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#10B981',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,

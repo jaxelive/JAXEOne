@@ -1578,7 +1578,7 @@ const styles = StyleSheet.create({
     color: '#A0A0A0',
   },
   managerBadge: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#10B981',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -1586,7 +1586,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     borderWidth: 2,
-    borderColor: '#FF8C5A',
+    borderColor: '#34D399',
   },
   managerBadgeText: {
     fontSize: 12,
