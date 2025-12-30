@@ -38,7 +38,7 @@ export interface CreatorData {
   is_active: boolean;
   manager?: ManagerData | null;
   user_role?: string | null;
-  is_manager?: boolean;
+  is_manager: boolean;
 }
 
 export interface CreatorStats {
@@ -120,7 +120,8 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
           isManager = false;
         } else if (managerCheck) {
           isManager = true;
-          console.log('[useCreatorData] ✅ User IS a manager - manager record found:', managerCheck.id);
+          console.log('[useCreatorData] ✅✅✅ USER IS A MANAGER - manager record found:', managerCheck.id);
+          console.log('[useCreatorData] ✅✅✅ Setting is_manager to TRUE');
         } else {
           console.log('[useCreatorData] ❌ User is NOT a manager - no manager record found');
         }
@@ -179,19 +180,14 @@ export function useCreatorData(creatorHandle: string = 'avelezsanti') {
         is_manager: isManager,
       };
 
-      console.log('[useCreatorData] Final creator data:', {
-        handle: transformedCreator.creator_handle,
-        name: `${transformedCreator.first_name} ${transformedCreator.last_name}`,
-        diamonds: transformedCreator.total_diamonds,
-        monthlyDiamonds: transformedCreator.diamonds_monthly,
-        liveDays: transformedCreator.live_days_30d,
-        liveHours: Math.floor(transformedCreator.live_duration_seconds_30d / 3600),
-        hasManager: !!managerData,
-        managerName: managerData ? `${managerData.first_name} ${managerData.last_name}` : 'None',
-        userRole: userRole,
-        isManager: isManager,
-        '🎯 MANAGER BADGE SHOULD SHOW': isManager ? 'YES ✅' : 'NO ❌'
-      });
+      console.log('[useCreatorData] ========================================');
+      console.log('[useCreatorData] FINAL CREATOR DATA:');
+      console.log('[useCreatorData] handle:', transformedCreator.creator_handle);
+      console.log('[useCreatorData] name:', `${transformedCreator.first_name} ${transformedCreator.last_name}`);
+      console.log('[useCreatorData] user_role:', transformedCreator.user_role);
+      console.log('[useCreatorData] is_manager:', transformedCreator.is_manager);
+      console.log('[useCreatorData] 🎯 MANAGER BADGE SHOULD SHOW:', transformedCreator.is_manager ? 'YES ✅✅✅' : 'NO ❌');
+      console.log('[useCreatorData] ========================================');
       
       setCreator(transformedCreator);
       setError(null);

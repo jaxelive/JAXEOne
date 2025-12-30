@@ -178,20 +178,23 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (creator) {
-      console.log('[HomeScreen] Creator loaded:', {
-        handle: creator.creator_handle,
-        name: `${creator.first_name} ${creator.last_name}`,
-        monthlyDiamonds: creator.diamonds_monthly,
-        totalDiamonds: creator.total_diamonds,
-        liveDays: creator.live_days_30d,
-        liveHours: Math.floor(creator.live_duration_seconds_30d / 3600),
-        hasManager: !!creator.manager,
-        managerName: creator.manager ? `${creator.manager.first_name} ${creator.manager.last_name}` : 'None',
-        creatorType: creator.creator_type,
-        userRole: creator.user_role,
-        isManager: creator.is_manager,
-        '🎯 SHOULD SHOW MANAGER BADGE': creator.is_manager ? 'YES ✅' : 'NO ❌'
-      });
+      console.log('[HomeScreen] ========================================');
+      console.log('[HomeScreen] CREATOR LOADED IN HOME SCREEN:');
+      console.log('[HomeScreen] handle:', creator.creator_handle);
+      console.log('[HomeScreen] name:', `${creator.first_name} ${creator.last_name}`);
+      console.log('[HomeScreen] monthlyDiamonds:', creator.diamonds_monthly);
+      console.log('[HomeScreen] totalDiamonds:', creator.total_diamonds);
+      console.log('[HomeScreen] liveDays:', creator.live_days_30d);
+      console.log('[HomeScreen] liveHours:', Math.floor(creator.live_duration_seconds_30d / 3600));
+      console.log('[HomeScreen] hasManager:', !!creator.manager);
+      console.log('[HomeScreen] managerName:', creator.manager ? `${creator.manager.first_name} ${creator.manager.last_name}` : 'None');
+      console.log('[HomeScreen] creatorType:', creator.creator_type);
+      console.log('[HomeScreen] user_role:', creator.user_role);
+      console.log('[HomeScreen] is_manager:', creator.is_manager);
+      console.log('[HomeScreen] is_manager type:', typeof creator.is_manager);
+      console.log('[HomeScreen] is_manager === true:', creator.is_manager === true);
+      console.log('[HomeScreen] 🎯 SHOULD SHOW MANAGER BADGE:', creator.is_manager ? 'YES ✅✅✅' : 'NO ❌');
+      console.log('[HomeScreen] ========================================');
       fetchBattleData();
       fetchChallengeData();
       fetchEducationData();
@@ -617,10 +620,15 @@ export default function HomeScreen() {
     ? creator.creator_type 
     : ['Creator'];
 
-  // Check if user is a manager - just check is_manager flag
+  // Check if user is a manager - EXPLICIT CHECK
   const isManager = creator.is_manager === true;
 
-  console.log('[HomeScreen] Rendering with isManager:', isManager, 'creator.is_manager:', creator.is_manager);
+  console.log('[HomeScreen] ========================================');
+  console.log('[HomeScreen] RENDERING HOME SCREEN');
+  console.log('[HomeScreen] creator.is_manager:', creator.is_manager);
+  console.log('[HomeScreen] isManager:', isManager);
+  console.log('[HomeScreen] Will render Manager badge:', isManager ? 'YES ✅✅✅' : 'NO ❌');
+  console.log('[HomeScreen] ========================================');
 
   // Calculate tier and next tier from real data with region-based logic
   const currentDiamonds = creator.diamonds_monthly || 0;
@@ -722,7 +730,7 @@ export default function HomeScreen() {
                     </View>
                     {isManager && (
                       <View style={styles.managerBadge}>
-                        <Text style={styles.managerBadgeText}>Manager</Text>
+                        <Text style={styles.managerBadgeText}>✨ Manager</Text>
                       </View>
                     )}
                   </View>
@@ -1572,7 +1580,7 @@ const styles = StyleSheet.create({
   },
   managerBadgeText: {
     fontSize: 11,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   headerIcons: {
