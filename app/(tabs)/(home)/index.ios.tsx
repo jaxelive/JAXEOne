@@ -118,6 +118,9 @@ export default function HomeScreen() {
   
   const region = creator.region || 'USA / Canada';
 
+  // Check if user is a manager
+  const isManager = creator.user_role === 'manager';
+
   // Format creator types for display
   const creatorTypeDisplay = creatorTypes.join(' / ');
 
@@ -186,6 +189,11 @@ export default function HomeScreen() {
                       <Text style={styles.liveBadgeText}>{type}</Text>
                     </LinearGradient>
                   ))}
+                  {isManager && (
+                    <View style={styles.managerBadge}>
+                      <Text style={styles.managerBadgeText}>Manager</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </View>
@@ -696,6 +704,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   liveBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+  },
+  managerBadge: {
+    backgroundColor: colors.success,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  managerBadgeText: {
     fontSize: 12,
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
