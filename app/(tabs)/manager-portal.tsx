@@ -120,6 +120,9 @@ export default function ManagerPortalScreen() {
   const [diamondsAnim] = useState(new Animated.Value(0));
   const [displayDiamonds, setDisplayDiamonds] = useState(0);
 
+  // WhatsApp Group button state
+  const [whatsappGroupCopied, setWhatsappGroupCopied] = useState(false);
+
   const fetchManagerPortalData = useCallback(async () => {
     try {
       setLoading(true);
@@ -318,13 +321,16 @@ export default function ManagerPortalScreen() {
 
   const handleWhatsAppGroupPress = async () => {
     if (!managerIdentity?.whatsapp_group_link) {
-      Alert.alert('Info', 'WhatsApp group link not available');
+      Alert.alert('Info', 'No group link set.');
       return;
     }
     
     try {
       await Clipboard.setStringAsync(managerIdentity.whatsapp_group_link);
-      Alert.alert('Copied!', 'WhatsApp group link copied to clipboard');
+      setWhatsappGroupCopied(true);
+      setTimeout(() => {
+        setWhatsappGroupCopied(false);
+      }, 2000);
     } catch (error) {
       console.error('[ManagerPortal] Error copying to clipboard:', error);
       Alert.alert('Error', 'Could not copy link to clipboard');
@@ -532,26 +538,29 @@ export default function ManagerPortalScreen() {
       >
         {/* MANAGER IDENTITY CARD */}
         <View style={styles.managerIdentityCard}>
-          {/* Manager Badge at Top */}
-          <View style={styles.managerBadge}>
-            <IconSymbol
-              ios_icon_name="star.fill"
-              android_material_icon_name="star"
-              size={14}
-              color="#FFFFFF"
-            />
-            <Text style={styles.managerBadgeText}>Manager</Text>
-          </View>
-
-          <View style={styles.managerHeader}>
-            <Image
-              source={{ uri: profileImageUrl }}
-              style={styles.managerAvatar}
-            />
-            <View style={styles.managerInfo}>
-              <Text style={styles.managerName}>
-                {managerIdentity.first_name} {managerIdentity.last_name}
-              </Text>
+          {/* Manager Header with Badge in Top-Right */}
+          <View style={styles.managerHeaderRow}>
+            <View style={styles.managerHeaderLeft}>
+              <Image
+                source={{ uri: profileImageUrl }}
+                style={styles.managerAvatar}
+              />
+              <View style={styles.managerInfo}>
+                <Text style={styles.managerName}>
+                  {managerIdentity.first_name} {managerIdentity.last_name}
+                </Text>
+              </View>
+            </View>
+            
+            {/* Manager Badge - Top Right Corner */}
+            <View style={styles.managerBadgeTopRight}>
+              <IconSymbol
+                ios_icon_name="star.fill"
+                android_material_icon_name="star"
+                size={14}
+                color="#FFFFFF"
+              />
+              <Text style={styles.managerBadgeText}>Manager</Text>
             </View>
           </View>
 
@@ -650,7 +659,7 @@ export default function ManagerPortalScreen() {
           </View>
 
           {/* My WhatsApp Group Button */}
-          {managerIdentity.whatsapp_group_link && (
+          {managerIdentity.whatsapp_group_link ? (
             <TouchableOpacity 
               style={styles.whatsappGroupButton}
               onPress={handleWhatsAppGroupPress}
@@ -661,8 +670,22 @@ export default function ManagerPortalScreen() {
                 size={20}
                 color="#FFFFFF"
               />
-              <Text style={styles.whatsappGroupButtonText}>My WhatsApp Group</Text>
+              <Text style={styles.whatsappGroupButtonText}>
+                {whatsappGroupCopied ? 'Copied!' : 'My WhatsApp Group'}
+              </Text>
             </TouchableOpacity>
+          ) : (
+            <View style={styles.whatsappGroupButtonDisabled}>
+              <IconSymbol
+                ios_icon_name="person.3.fill"
+                android_material_icon_name="group"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.whatsappGroupButtonDisabledText}>
+                No group link set.
+              </Text>
+            </View>
           )}
         </View>
 
@@ -1043,7 +1066,7 @@ export default function ManagerPortalScreen() {
                           )}
                         </View>
 
-                        {/* Diamond Progress Bar - Increased Height */}
+                        {/* Diamond Progress Bar - Increased Height (Always Visible) */}
                         {currentLevel !== 'gold' && (
                           <View style={styles.collapsedProgressBarContainer}>
                             <View style={styles.collapsedProgressBarBg}>
@@ -1326,26 +1349,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.success,
   },
-  managerBadge: {
+  managerHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.success,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    alignSelf: 'flex-start',
-    gap: 6,
-    marginBottom: 16,
-  },
-  managerBadgeText: {
-    fontSize: 13,
-    fontFamily: 'Poppins_700Bold',
-    color: '#FFFFFF',
-  },
-  managerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 20,
+  },
+  managerHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   managerAvatar: {
     width: 80,
@@ -1362,6 +1375,20 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontFamily: 'Poppins_700Bold',
     color: colors.text,
+  },
+  managerBadgeTopRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.success,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  managerBadgeText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
   },
   managerDetails: {
     gap: 12,
@@ -1415,6 +1442,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
+  },
+  whatsappGroupButtonDisabled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.grey,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  whatsappGroupButtonDisabledText: {
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.textSecondary,
   },
 
   // PERFORMANCE SUMMARY
@@ -1684,14 +1726,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   collapsedProgressBarBg: {
-    height: 8,
+    height: 10,
     backgroundColor: colors.backgroundAlt,
-    borderRadius: 4,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   collapsedProgressBarFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 5,
   },
   creatorExpanded: {
     paddingHorizontal: 16,
