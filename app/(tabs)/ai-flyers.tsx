@@ -1,115 +1,120 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { colors } from '@/styles/commonStyles';
-import { supabase } from '@/app/integrations/supabase/client';
-import { useCreatorData } from '@/hooks/useCreatorData';
+import { useBattleFlyerGen } from '@/hooks/useBattleFlyerGen';
 import { IconSymbol } from '@/components/IconSymbol';
 
-interface BattleOption {
-  id: string;
-  creator_1_handle: string;
-  creator_2_handle: string;
-  battle_date: string;
-  battle_time: string;
-}
-
-const THEMES = [
-  { id: 'warrior', name: 'Warrior', emoji: '⚔️', gradient: ['#FF6B6B', '#FF8E53'] },
-  { id: 'tiktok', name: 'TikTok', emoji: '🎵', gradient: ['#00F2EA', '#FF0050'] },
-  { id: 'galaxy', name: 'Galaxy', emoji: '🌌', gradient: ['#667EEA', '#764BA2'] },
-  { id: 'minimal', name: 'Minimal', emoji: '✨', gradient: ['#F5F5F5', '#E0E0E0'] },
-  { id: 'neon', name: 'Neon', emoji: '💫', gradient: ['#FF00FF', '#00FFFF'] },
-  { id: 'sunset', name: 'Sunset', emoji: '🌅', gradient: ['#FF6B6B', '#FFD93D'] },
-];
-
 export default function AIFlyersScreen() {
-  const { creator } = useCreatorData();
-  const [selectedTheme, setSelectedTheme] = useState(THEMES[0]);
-  const [eventTitle, setEventTitle] = useState('');
-  const [eventDate, setEventDate] = useState(new Date());
-  const [eventTime, setEventTime] = useState(new Date());
-  const [creatorHandles, setCreatorHandles] = useState('');
-  const [notes, setNotes] = useState('');
+  const { generate, loading, error, data, reset } = useBattleFlyerGen();
+  
+  const [title, setTitle] = useState('Official Battle');
+  const [creatorName, setCreatorName] = useState('');
+  const [opponentName, setOpponentName] = useState('');
+  const [battleDate, setBattleDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [generatedFlyer, setGeneratedFlyer] = useState<string | null>(null);
-  const [battles, setBattles] = useState<BattleOption[]>([]);
-  const [selectedBattle, setSelectedBattle] = useState<BattleOption | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [generatedFlyerUrl, setGeneratedFlyerUrl] = useState<string | null>(null);
 
-  const fetchUpcomingBattles = useCallback(async () => {
-    if (!creator) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('battles_calendar')
-        .select('*')
-        .or(`creator_1_id.eq.${creator.id},creator_2_id.eq.${creator.id}`)
-        .gte('battle_date', new Date().toISOString())
-        .order('battle_date', { ascending: true })
-        .limit(10);
-
-      if (error) throw error;
-      setBattles(data || []);
-    } catch (error: any) {
-      console.error('Error fetching battles:', error);
-    }
-  }, [creator]);
-
-  useEffect(() => {
-    fetchUpcomingBattles();
-  }, [creator]);
-
-
-
-  const handleSelectBattle = (battle: BattleOption) => {
-    setSelectedBattle(battle);
-    setEventTitle(`Battle: ${battle.creator_1_handle} vs ${battle.creator_2_handle}`);
-    setCreatorHandles(`${battle.creator_1_handle}, ${battle.creator_2_handle}`);
-    setEventDate(new Date(battle.battle_date));
-    const [hours, minutes] = battle.battle_time.split(':');
-    const time = new Date();
-    time.setHours(parseInt(hours), parseInt(minutes));
-    setEventTime(time);
-  };
-
-  const generateFlyer = async () => {
-    if (!eventTitle.trim()) {
-      Alert.alert('Error', 'Please enter an event title');
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please grant permission to access your photos');
       return;
     }
 
-    setLoading(true);
-    try {
-      // Show integration instructions
-      Alert.alert(
-        'AI Flyer Generation',
-        'To generate AI flyers with Google Gemini or similar AI services:\n\n1. Click the Integration button in Natively\n2. Select "Image Generation" integration\n3. Connect your AI service (Google Gemini, DALL-E, etc.)\n4. Return here to generate flyers\n\nFor now, we\'ll show you a preview of what your flyer will look like.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Simulate flyer generation with a preview
-              setGeneratedFlyer('preview');
-            },
-          },
-        ]
-      );
-    } catch (error: any) {
-      console.error('Error generating flyer:', error);
-      Alert.alert('Error', 'Failed to generate flyer');
-    } finally {
-      setLoading(false);
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
     }
   };
 
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please grant permission to access your camera');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
+
+  const handleGenerateFlyer = async () => {
+    if (!title.trim()) {
+      Alert.alert('Error', 'Please enter a title');
+      return;
+    }
+
+    if (!creatorName.trim()) {
+      Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+
+    if (!opponentName.trim()) {
+      Alert.alert('Error', 'Please enter opponent name');
+      return;
+    }
+
+    if (!photoUri) {
+      Alert.alert('Error', 'Please upload a face photo');
+      return;
+    }
+
+    const formattedDate = battleDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+    const result = await generate({
+      title,
+      creatorName,
+      opponentName,
+      battleDate: formattedDate,
+      image: {
+        uri: photoUri,
+        name: 'photo.jpg',
+        type: 'image/jpeg',
+      },
+    });
+
+    if (result) {
+      setGeneratedFlyerUrl(result.url);
+      Alert.alert('Success', 'Your battle flyer has been forged!');
+    } else if (error) {
+      Alert.alert('Error', error);
+    }
+  };
+
+  const handleRegenerate = () => {
+    setGeneratedFlyerUrl(null);
+    reset();
+  };
+
   const saveToGallery = async () => {
+    if (!generatedFlyerUrl) return;
+
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
@@ -117,11 +122,13 @@ export default function AIFlyersScreen() {
         return;
       }
 
-      Alert.alert(
-        'Save to Gallery',
-        'Once AI integration is complete, your flyer will be saved to your device gallery automatically.',
-        [{ text: 'OK' }]
-      );
+      const fileUri = FileSystem.documentDirectory + 'battle-flyer.png';
+      const downloadResult = await FileSystem.downloadAsync(generatedFlyerUrl, fileUri);
+
+      if (downloadResult.uri) {
+        await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+        Alert.alert('Success', 'Flyer saved to gallery!');
+      }
     } catch (error: any) {
       console.error('Error saving to gallery:', error);
       Alert.alert('Error', 'Failed to save to gallery');
@@ -129,6 +136,8 @@ export default function AIFlyersScreen() {
   };
 
   const shareFlyer = async () => {
+    if (!generatedFlyerUrl) return;
+
     try {
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
@@ -136,11 +145,9 @@ export default function AIFlyersScreen() {
         return;
       }
 
-      Alert.alert(
-        'Share Flyer',
-        'Once AI integration is complete, you\'ll be able to share your flyer directly to social media, messaging apps, and more!',
-        [{ text: 'OK' }]
-      );
+      const fileUri = FileSystem.documentDirectory + 'battle-flyer.png';
+      await FileSystem.downloadAsync(generatedFlyerUrl, fileUri);
+      await Sharing.shareAsync(fileUri);
     } catch (error: any) {
       console.error('Error sharing flyer:', error);
       Alert.alert('Error', 'Failed to share flyer');
@@ -148,18 +155,14 @@ export default function AIFlyersScreen() {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  };
-
-  const formatTime = (time: Date) => {
-    return time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: 'AI Flyers',
+          title: 'AI Flyer Creator',
           headerShown: true,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
@@ -168,204 +171,171 @@ export default function AIFlyersScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Header */}
         <LinearGradient
-          colors={['#FFFFFF', '#E9D5FF']}
+          colors={['#1A1A1A', '#2A2A2A']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerCard}
         >
-          <Text style={styles.emoji}>✨</Text>
-          <Text style={styles.headerTitle}>AI Flyer Generator</Text>
-          <Text style={styles.headerSubtitle}>Create stunning promotional flyers with AI</Text>
+          <Text style={styles.emoji}>⚔️</Text>
+          <Text style={styles.headerTitle}>Official Battle Generator</Text>
+          <Text style={styles.headerSubtitle}>Create epic medieval warrior battle flyers</Text>
         </LinearGradient>
 
-        {/* Pre-booked Battles */}
-        {battles.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select a Battle</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.battleScroll}>
-              {battles.map((battle) => (
+        {!generatedFlyerUrl ? (
+          <>
+            {/* Form Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Battle Details</Text>
+              
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Title *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Official Battle"
+                  placeholderTextColor={colors.textTertiary}
+                  maxLength={40}
+                />
+                <Text style={styles.helperText}>{title.length}/40 characters</Text>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Your Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={creatorName}
+                  onChangeText={setCreatorName}
+                  placeholder="Enter your name"
+                  placeholderTextColor={colors.textTertiary}
+                  maxLength={40}
+                />
+                <Text style={styles.helperText}>{creatorName.length}/40 characters</Text>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Opponent Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={opponentName}
+                  onChangeText={setOpponentName}
+                  placeholder="@username or full name"
+                  placeholderTextColor={colors.textTertiary}
+                  maxLength={40}
+                />
+                <Text style={styles.helperText}>
+                  {opponentName.length}/40 characters • Example: @username or full name
+                </Text>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Battle Date *</Text>
                 <TouchableOpacity
-                  key={battle.id}
-                  style={[
-                    styles.battleOption,
-                    selectedBattle?.id === battle.id && styles.battleOptionSelected,
-                  ]}
-                  onPress={() => handleSelectBattle(battle)}
+                  style={styles.inputButton}
+                  onPress={() => setShowDatePicker(true)}
                 >
-                  <Text style={styles.battleOptionText}>
-                    {battle.creator_1_handle} vs {battle.creator_2_handle}
-                  </Text>
-                  <Text style={styles.battleOptionDate}>
-                    {new Date(battle.battle_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
+                  <IconSymbol ios_icon_name="calendar" android_material_icon_name="calendar-today" size={20} color={colors.primary} />
+                  <Text style={styles.inputButtonText}>{formatDate(battleDate)}</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+              </View>
 
-        {/* Theme Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Theme</Text>
-          <View style={styles.themeGrid}>
-            {THEMES.map((theme) => (
-              <TouchableOpacity
-                key={theme.id}
-                style={[
-                  styles.themeCard,
-                  selectedTheme.id === theme.id && styles.themeCardSelected,
-                ]}
-                onPress={() => setSelectedTheme(theme)}
-              >
-                <LinearGradient
-                  colors={theme.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.themeGradient}
-                >
-                  <Text style={styles.themeEmoji}>{theme.emoji}</Text>
-                </LinearGradient>
-                <Text style={styles.themeName}>{theme.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={battleDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, date) => {
+                    setShowDatePicker(Platform.OS === 'ios');
+                    if (date) setBattleDate(date);
+                  }}
+                />
+              )}
 
-        {/* Event Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Event Details</Text>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Event Title</Text>
-            <TextInput
-              style={styles.input}
-              value={eventTitle}
-              onChangeText={setEventTitle}
-              placeholder="Battle Night 2024"
-              placeholderTextColor={colors.textTertiary}
-            />
-          </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Upload Face Photo *</Text>
+                <Text style={styles.helperText}>
+                  Good lighting, no sunglasses. Face should be clearly visible.
+                </Text>
+                
+                {photoUri ? (
+                  <View style={styles.photoPreview}>
+                    <Image source={{ uri: photoUri }} style={styles.photoImage} />
+                    <TouchableOpacity
+                      style={styles.changePhotoButton}
+                      onPress={pickImage}
+                    >
+                      <Text style={styles.changePhotoText}>Change Photo</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.photoButtons}>
+                    <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
+                      <IconSymbol ios_icon_name="camera" android_material_icon_name="camera-alt" size={24} color={colors.primary} />
+                      <Text style={styles.photoButtonText}>Take Photo</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+                      <IconSymbol ios_icon_name="photo" android_material_icon_name="photo-library" size={24} color={colors.primary} />
+                      <Text style={styles.photoButtonText}>Choose from Gallery</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </View>
 
-          <TouchableOpacity
-            style={styles.inputButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <IconSymbol ios_icon_name="calendar" android_material_icon_name="calendar-today" size={20} color={colors.primary} />
-            <Text style={styles.inputButtonText}>{formatDate(eventDate)}</Text>
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={eventDate}
-              mode="date"
-              display="default"
-              onChange={(event, date) => {
-                setShowDatePicker(Platform.OS === 'ios');
-                if (date) setEventDate(date);
-              }}
-            />
-          )}
-
-          <TouchableOpacity
-            style={styles.inputButton}
-            onPress={() => setShowTimePicker(true)}
-          >
-            <IconSymbol ios_icon_name="clock" android_material_icon_name="access-time" size={20} color={colors.primary} />
-            <Text style={styles.inputButtonText}>{formatTime(eventTime)}</Text>
-          </TouchableOpacity>
-
-          {showTimePicker && (
-            <DateTimePicker
-              value={eventTime}
-              mode="time"
-              display="default"
-              onChange={(event, time) => {
-                setShowTimePicker(Platform.OS === 'ios');
-                if (time) setEventTime(time);
-              }}
-            />
-          )}
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Creator Handles (comma separated)</Text>
-            <TextInput
-              style={styles.input}
-              value={creatorHandles}
-              onChangeText={setCreatorHandles}
-              placeholder="@creator1, @creator2"
-              placeholderTextColor={colors.textTertiary}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Additional Notes</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Add any special details..."
-              placeholderTextColor={colors.textTertiary}
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-        </View>
-
-        {/* Generate Button */}
-        <TouchableOpacity
-          style={[styles.generateButton, loading && styles.buttonDisabled]}
-          onPress={generateFlyer}
-          disabled={loading}
-        >
-          <LinearGradient
-            colors={colors.gradientPurple}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradientButton}
-          >
-            <IconSymbol ios_icon_name="sparkles" android_material_icon_name="auto-awesome" size={24} color="#FFFFFF" />
-            <Text style={styles.generateButtonText}>
-              {loading ? 'Generating...' : 'Generate Flyer'}
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Generated Flyer Preview */}
-        {generatedFlyer && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Flyer Preview</Text>
-            <View style={styles.flyerPreview}>
+            {/* Generate Button */}
+            <TouchableOpacity
+              style={[styles.generateButton, loading && styles.buttonDisabled]}
+              onPress={handleGenerateFlyer}
+              disabled={loading}
+            >
               <LinearGradient
-                colors={selectedTheme.gradient}
+                colors={colors.gradientPurple}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.flyerGradient}
+                style={styles.gradientButton}
               >
-                <Text style={styles.flyerEmoji}>{selectedTheme.emoji}</Text>
-                <Text style={styles.flyerTitle}>{eventTitle}</Text>
-                <Text style={styles.flyerDate}>{formatDate(eventDate)}</Text>
-                <Text style={styles.flyerTime}>{formatTime(eventTime)}</Text>
-                {creatorHandles && (
-                  <Text style={styles.flyerCreators}>{creatorHandles}</Text>
-                )}
-                {notes && (
-                  <Text style={styles.flyerNotes}>{notes}</Text>
-                )}
+                <IconSymbol ios_icon_name="sparkles" android_material_icon_name="auto-awesome" size={24} color="#FFFFFF" />
+                <Text style={styles.generateButtonText}>
+                  {loading ? 'Forging your battle poster…' : 'Generate Flyer'}
+                </Text>
               </LinearGradient>
-            </View>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            {/* Generated Flyer Preview */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Your Battle Flyer</Text>
+              <View style={styles.flyerPreview}>
+                <Image
+                  source={{ uri: generatedFlyerUrl }}
+                  style={styles.flyerImage}
+                  resizeMode="contain"
+                />
+              </View>
 
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.actionButton} onPress={saveToGallery}>
-                <IconSymbol ios_icon_name="arrow.down.circle" android_material_icon_name="download" size={24} color={colors.primary} />
-                <Text style={styles.actionButtonText}>Save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} onPress={shareFlyer}>
-                <IconSymbol ios_icon_name="square.and.arrow.up" android_material_icon_name="share" size={24} color={colors.primary} />
-                <Text style={styles.actionButtonText}>Share</Text>
+              {/* Action Buttons */}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity style={styles.actionButton} onPress={saveToGallery}>
+                  <IconSymbol ios_icon_name="arrow.down.circle.fill" android_material_icon_name="download" size={28} color={colors.primary} />
+                  <Text style={styles.actionButtonText}>Save</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={shareFlyer}>
+                  <IconSymbol ios_icon_name="square.and.arrow.up.fill" android_material_icon_name="share" size={28} color={colors.primary} />
+                  <Text style={styles.actionButtonText}>Share</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Regenerate Button */}
+              <TouchableOpacity
+                style={styles.regenerateButton}
+                onPress={handleRegenerate}
+              >
+                <IconSymbol ios_icon_name="arrow.clockwise" android_material_icon_name="refresh" size={20} color={colors.text} />
+                <Text style={styles.regenerateButtonText}>Regenerate</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </>
         )}
       </ScrollView>
     </>
@@ -385,7 +355,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 32,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   emoji: {
     fontSize: 64,
@@ -413,71 +383,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 16,
   },
-  battleScroll: {
-    marginBottom: 8,
-  },
-  battleOption: {
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
-    minWidth: 180,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  battleOptionSelected: {
-    borderColor: colors.primary,
-  },
-  battleOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  battleOptionDate: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  themeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  themeCard: {
-    width: '31%',
-    aspectRatio: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: 'transparent',
-  },
-  themeCardSelected: {
-    borderColor: colors.primary,
-  },
-  themeGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  themeEmoji: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  themeName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
-    paddingVertical: 8,
-    backgroundColor: colors.backgroundAlt,
-  },
   inputContainer: {
-    marginBottom: 12,
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
@@ -486,10 +398,13 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
+  helperText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 6,
   },
   inputButton: {
     flexDirection: 'row',
@@ -497,13 +412,57 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
     gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   inputButtonText: {
     fontSize: 16,
     fontWeight: '500',
     color: colors.text,
+  },
+  photoButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  photoButton: {
+    flex: 1,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  photoButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  photoPreview: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  photoImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  changePhotoButton: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  changePhotoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
   generateButton: {
     borderRadius: 20,
@@ -528,68 +487,47 @@ const styles = StyleSheet.create({
   flyerPreview: {
     borderRadius: 24,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 20,
+    backgroundColor: colors.backgroundAlt,
     aspectRatio: 9 / 16,
   },
-  flyerGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  flyerEmoji: {
-    fontSize: 80,
-    marginBottom: 24,
-  },
-  flyerTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  flyerDate: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  flyerTime: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  flyerCreators: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  flyerNotes: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    opacity: 0.9,
+  flyerImage: {
+    width: '100%',
+    height: '100%',
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 16,
   },
   actionButton: {
     flex: 1,
     backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     alignItems: 'center',
     gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   actionButtonText: {
     fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  regenerateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 16,
+    padding: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  regenerateButtonText: {
+    fontSize: 16,
     fontWeight: '600',
     color: colors.text,
   },
