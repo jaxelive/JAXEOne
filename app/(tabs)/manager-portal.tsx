@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,11 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
+  Animated,
+  Easing,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
@@ -20,6 +23,14 @@ import { supabase } from '@/app/integrations/supabase/client';
 import { useCreatorData } from '@/hooks/useCreatorData';
 
 const CREATOR_HANDLE = 'avelezsanti';
+
+// Graduation thresholds
+const SILVER_THRESHOLD = 200000;
+const GOLD_THRESHOLD = 500000;
+
+// Manager payout amounts (in dollars)
+const SILVER_PAYOUT = 100;
+const GOLD_PAYOUT = 250;
 
 interface ManagerIdentity {
   id: string;
@@ -49,14 +60,27 @@ interface AssignedCreator {
   phone: string | null;
   avatar_url: string | null;
   profile_picture_url: string | null;
+  battle_booked: boolean;
+  graduation_eligible: boolean;
+  graduation_paid_this_month: boolean;
+  was_graduated_at_assignment: boolean;
+  assigned_at: string | null;
 }
 
 interface ManagerStats {
   totalCreators: number;
   totalRookies: number;
-  totalGraduated: number;
+  totalSilver: number;
+  totalGold: number;
   collectiveDiamonds: number;
+  creatorsBookedBattle: number;
+  creatorsMissingBattle: number;
 }
+
+type SortOption = 'diamonds_high' | 'diamonds_low' | 'closest_graduation' | 'status_asc' | 'status_desc' | 'battle_missing' | 'eligible_first';
+type FilterStatus = 'all' | 'rookie' | 'silver' | 'gold';
+type FilterBattle = 'all' | 'booked' | 'missing';
+type FilterPayout = 'all' | 'eligible' | 'ineligible' | 'paid';
 
 export default function ManagerPortalScreen() {
   const [fontsLoaded] = useFonts({
@@ -72,12 +96,26 @@ export default function ManagerPortalScreen() {
   const [stats, setStats] = useState<ManagerStats>({
     totalCreators: 0,
     totalRookies: 0,
-    totalGraduated: 0,
+    totalSilver: 0,
+    totalGold: 0,
     collectiveDiamonds: 0,
+    creatorsBookedBattle: 0,
+    creatorsMissingBattle: 0,
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedCreatorId, setExpandedCreatorId] = useState<string | null>(null);
+  
+  // Filtering and sorting
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('diamonds_high');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [filterBattle, setFilterBattle] = useState<FilterBattle>('all');
+  const [filterPayout, setFilterPayout] = useState<FilterPayout>('all');
+  
+  // Animation for hero diamonds
+  const [diamondsAnim] = useState(new Animated.Value(0));
 
   const fetchManagerPortalData = useCallback(async () => {
     try {
@@ -86,8 +124,6 @@ export default function ManagerPortalScreen() {
 
       console.log('[ManagerPortal] 🎯 Fetching manager portal data for logged-in user');
 
-      // CRITICAL: Get the logged-in user's manager identity
-      // This is NOT about the manager they report to, but their own manager account
       if (!creator) {
         console.log('[ManagerPortal] ❌ No creator data available');
         setError('User data not available');
@@ -95,7 +131,6 @@ export default function ManagerPortalScreen() {
         return;
       }
 
-      // Check if the logged-in user is a manager
       if (creator.user_role !== 'manager') {
         console.log('[ManagerPortal] ❌ User is not a manager. Role:', creator.user_role);
         setError('You do not have manager access. This portal is only for managers.');
@@ -105,9 +140,6 @@ export default function ManagerPortalScreen() {
 
       console.log('[ManagerPortal] ✅ User is a manager. Fetching manager identity...');
 
-      // Find the manager record for this user
-      // The creator has a user_id that links to the users table
-      // We need to find the managers record where user_id matches
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('id, first_name, last_name, email, avatar_url, role, creator_id')
@@ -115,46 +147,30 @@ export default function ManagerPortalScreen() {
         .eq('role', 'manager')
         .single();
 
-      if (usersError) {
+      if (usersError || !usersData) {
         console.error('[ManagerPortal] ❌ Error fetching user data:', usersError);
         setError('Failed to fetch manager identity');
         setLoading(false);
         return;
       }
 
-      if (!usersData) {
-        console.log('[ManagerPortal] ❌ No user record found for this creator');
-        setError('Manager identity not found');
-        setLoading(false);
-        return;
-      }
-
       console.log('[ManagerPortal] ✅ User record found:', usersData.id);
 
-      // Now fetch the manager record
       const { data: managerData, error: managerError } = await supabase
         .from('managers')
         .select('*')
         .eq('user_id', usersData.id)
         .single();
 
-      if (managerError) {
+      if (managerError || !managerData) {
         console.error('[ManagerPortal] ❌ Error fetching manager record:', managerError);
         setError('Failed to fetch manager details');
         setLoading(false);
         return;
       }
 
-      if (!managerData) {
-        console.log('[ManagerPortal] ❌ No manager record found');
-        setError('Manager record not found');
-        setLoading(false);
-        return;
-      }
-
       console.log('[ManagerPortal] ✅ Manager record found:', managerData.id);
 
-      // Build manager identity
       const regions: string[] = [];
       if (managerData.manages_us) regions.push('USA & Canada');
       if (managerData.manages_latam) regions.push('Latin America');
@@ -179,21 +195,13 @@ export default function ManagerPortalScreen() {
         languages: languages,
       };
 
-      console.log('[ManagerPortal] ✅ Manager identity built:', {
-        name: `${identity.first_name} ${identity.last_name}`,
-        email: identity.email,
-        regions: identity.regions_managed,
-        languages: identity.languages,
-      });
-
       setManagerIdentity(identity);
 
-      // Fetch all creators assigned to THIS manager
       console.log('[ManagerPortal] 📊 Fetching assigned creators for manager:', managerData.id);
 
       const { data: creatorsData, error: creatorsError } = await supabase
         .from('creators')
-        .select('id, first_name, last_name, creator_handle, email, region, graduation_status, total_diamonds, diamonds_monthly, phone, avatar_url, profile_picture_url')
+        .select('id, first_name, last_name, creator_handle, email, region, graduation_status, total_diamonds, diamonds_monthly, phone, avatar_url, profile_picture_url, battle_booked, graduation_eligible, graduation_paid_this_month, was_graduated_at_assignment, assigned_at')
         .eq('assigned_manager_id', managerData.id)
         .eq('is_active', true)
         .order('diamonds_monthly', { ascending: false });
@@ -211,25 +219,45 @@ export default function ManagerPortalScreen() {
           c.graduation_status.toLowerCase().includes('rookie') ||
           c.graduation_status.toLowerCase().includes('new')
         ).length || 0;
-        const totalGraduated = creatorsData?.filter(c => 
+        const totalSilver = creatorsData?.filter(c => 
           c.graduation_status && 
-          (c.graduation_status.toLowerCase().includes('silver') || 
-           c.graduation_status.toLowerCase().includes('gold'))
+          c.graduation_status.toLowerCase().includes('silver')
+        ).length || 0;
+        const totalGold = creatorsData?.filter(c => 
+          c.graduation_status && 
+          c.graduation_status.toLowerCase().includes('gold')
         ).length || 0;
         const collectiveDiamonds = creatorsData?.reduce((sum, c) => sum + (c.diamonds_monthly || 0), 0) || 0;
+        const creatorsBookedBattle = creatorsData?.filter(c => c.battle_booked === true).length || 0;
+        const creatorsMissingBattle = creatorsData?.filter(c => c.battle_booked === false).length || 0;
 
         setStats({
           totalCreators,
           totalRookies,
-          totalGraduated,
+          totalSilver,
+          totalGold,
           collectiveDiamonds,
+          creatorsBookedBattle,
+          creatorsMissingBattle,
         });
+
+        // Animate hero diamonds
+        diamondsAnim.setValue(0);
+        Animated.timing(diamondsAnim, {
+          toValue: collectiveDiamonds,
+          duration: 1100,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start();
 
         console.log('[ManagerPortal] ✅ Stats calculated:', {
           totalCreators,
           totalRookies,
-          totalGraduated,
+          totalSilver,
+          totalGold,
           collectiveDiamonds,
+          creatorsBookedBattle,
+          creatorsMissingBattle,
         });
       }
     } catch (err: any) {
@@ -238,7 +266,7 @@ export default function ManagerPortalScreen() {
     } finally {
       setLoading(false);
     }
-  }, [creator]);
+  }, [creator, diamondsAnim]);
 
   useEffect(() => {
     if (creator && !creatorLoading) {
@@ -298,11 +326,122 @@ export default function ManagerPortalScreen() {
   };
 
   const getGraduationBadgeColor = (status: string | null) => {
-    if (!status) return colors.grey;
+    if (!status) return colors.primary;
     const lowerStatus = status.toLowerCase();
     if (lowerStatus.includes('gold')) return '#FFD700';
     if (lowerStatus.includes('silver')) return '#C0C0C0';
     return colors.primary;
+  };
+
+  const getGraduationLevel = (status: string | null): 'rookie' | 'silver' | 'gold' => {
+    if (!status) return 'rookie';
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus.includes('gold')) return 'gold';
+    if (lowerStatus.includes('silver')) return 'silver';
+    return 'rookie';
+  };
+
+  const getDiamondsToNextGraduation = (monthlyDiamonds: number, currentLevel: 'rookie' | 'silver' | 'gold') => {
+    if (currentLevel === 'gold') return 0;
+    if (currentLevel === 'silver') return Math.max(0, GOLD_THRESHOLD - monthlyDiamonds);
+    return Math.max(0, SILVER_THRESHOLD - monthlyDiamonds);
+  };
+
+  const getNextGraduationTarget = (currentLevel: 'rookie' | 'silver' | 'gold') => {
+    if (currentLevel === 'gold') return 'Gold';
+    if (currentLevel === 'silver') return 'Gold';
+    return 'Silver';
+  };
+
+  const getProgressPercentage = (monthlyDiamonds: number, currentLevel: 'rookie' | 'silver' | 'gold') => {
+    if (currentLevel === 'gold') return 100;
+    const target = currentLevel === 'silver' ? GOLD_THRESHOLD : SILVER_THRESHOLD;
+    return Math.min(100, (monthlyDiamonds / target) * 100);
+  };
+
+  // Filter and sort creators
+  const filteredAndSortedCreators = useMemo(() => {
+    let filtered = [...assignedCreators];
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => 
+        c.creator_handle.toLowerCase().includes(query) ||
+        `${c.first_name} ${c.last_name}`.toLowerCase().includes(query)
+      );
+    }
+
+    // Status filter
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(c => {
+        const level = getGraduationLevel(c.graduation_status);
+        return level === filterStatus;
+      });
+    }
+
+    // Battle filter
+    if (filterBattle !== 'all') {
+      filtered = filtered.filter(c => {
+        if (filterBattle === 'booked') return c.battle_booked === true;
+        if (filterBattle === 'missing') return c.battle_booked === false;
+        return true;
+      });
+    }
+
+    // Payout filter
+    if (filterPayout !== 'all') {
+      filtered = filtered.filter(c => {
+        if (filterPayout === 'eligible') return c.graduation_eligible && !c.graduation_paid_this_month && !c.was_graduated_at_assignment;
+        if (filterPayout === 'ineligible') return c.was_graduated_at_assignment;
+        if (filterPayout === 'paid') return c.graduation_paid_this_month;
+        return true;
+      });
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'diamonds_high':
+          return b.diamonds_monthly - a.diamonds_monthly;
+        case 'diamonds_low':
+          return a.diamonds_monthly - b.diamonds_monthly;
+        case 'closest_graduation': {
+          const aLevel = getGraduationLevel(a.graduation_status);
+          const bLevel = getGraduationLevel(b.graduation_status);
+          const aRemaining = getDiamondsToNextGraduation(a.diamonds_monthly, aLevel);
+          const bRemaining = getDiamondsToNextGraduation(b.diamonds_monthly, bLevel);
+          return aRemaining - bRemaining;
+        }
+        case 'status_asc': {
+          const order = { rookie: 0, silver: 1, gold: 2 };
+          const aLevel = getGraduationLevel(a.graduation_status);
+          const bLevel = getGraduationLevel(b.graduation_status);
+          return order[aLevel] - order[bLevel];
+        }
+        case 'status_desc': {
+          const order = { rookie: 0, silver: 1, gold: 2 };
+          const aLevel = getGraduationLevel(a.graduation_status);
+          const bLevel = getGraduationLevel(b.graduation_status);
+          return order[bLevel] - order[aLevel];
+        }
+        case 'battle_missing':
+          return (a.battle_booked === b.battle_booked) ? 0 : a.battle_booked ? 1 : -1;
+        case 'eligible_first': {
+          const aEligible = a.graduation_eligible && !a.graduation_paid_this_month && !a.was_graduated_at_assignment;
+          const bEligible = b.graduation_eligible && !b.graduation_paid_this_month && !b.was_graduated_at_assignment;
+          return (aEligible === bEligible) ? 0 : aEligible ? -1 : 1;
+        }
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [assignedCreators, searchQuery, sortBy, filterStatus, filterBattle, filterPayout]);
+
+  const toggleCreatorExpand = (creatorId: string) => {
+    setExpandedCreatorId(prev => prev === creatorId ? null : creatorId);
   };
 
   if (!fontsLoaded || loading || creatorLoading) {
@@ -375,186 +514,297 @@ export default function ManagerPortalScreen() {
           />
         }
       >
-        {/* MANAGER IDENTITY SECTION */}
-        <View style={styles.headerCard}>
-          <View style={styles.headerTop}>
-            <View style={styles.profileImageContainer}>
-              <Image
-                source={{ uri: profileImageUrl }}
-                style={styles.profileImage}
-              />
-              <View style={styles.onlineIndicator} />
-            </View>
-            <View style={styles.headerInfo}>
-              <Text style={styles.managerName}>
-                {managerIdentity.first_name} {managerIdentity.last_name}
-              </Text>
-              <TouchableOpacity 
-                style={styles.emailRow}
-                onPress={() => handleEmailPress(managerIdentity.email)}
-              >
-                <IconSymbol
-                  ios_icon_name="envelope.fill"
-                  android_material_icon_name="email"
-                  size={16}
-                  color={colors.primary}
-                />
-                <Text style={styles.emailText}>{managerIdentity.email}</Text>
-              </TouchableOpacity>
-              <View style={styles.managerSinceRow}>
-                <IconSymbol
-                  ios_icon_name="calendar"
-                  android_material_icon_name="calendar-today"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.managerSinceText}>
-                  Manager Since: {formatDate(managerIdentity.promoted_to_manager_at)}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Manager Details */}
-          <View style={styles.managerDetails}>
-            {managerIdentity.regions_managed.length > 0 && (
-              <View style={styles.detailRow}>
-                <IconSymbol
-                  ios_icon_name="globe"
-                  android_material_icon_name="public"
-                  size={18}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.detailLabel}>Regions:</Text>
-                <Text style={styles.detailValue}>{managerIdentity.regions_managed.join(', ')}</Text>
-              </View>
-            )}
-            {managerIdentity.languages.length > 0 && (
-              <View style={styles.detailRow}>
-                <IconSymbol
-                  ios_icon_name="text.bubble"
-                  android_material_icon_name="language"
-                  size={18}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.detailLabel}>Languages:</Text>
-                <Text style={styles.detailValue}>{managerIdentity.languages.join(', ')}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Quick Contact Actions */}
-          <View style={styles.quickActions}>
-            {managerIdentity.tiktok_handle && (
-              <TouchableOpacity 
-                style={styles.quickActionButton}
-                onPress={() => handleTikTokPress(managerIdentity.tiktok_handle!)}
-              >
-                <IconSymbol
-                  ios_icon_name="music.note"
-                  android_material_icon_name="music-note"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.quickActionText}>TikTok</Text>
-              </TouchableOpacity>
-            )}
-            {managerIdentity.whatsapp && (
-              <TouchableOpacity 
-                style={styles.quickActionButton}
-                onPress={() => handleWhatsAppPress(managerIdentity.whatsapp!)}
-              >
-                <IconSymbol
-                  ios_icon_name="message.fill"
-                  android_material_icon_name="chat"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.quickActionText}>WhatsApp</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => handleEmailPress(managerIdentity.email)}
-            >
-              <IconSymbol
-                ios_icon_name="envelope.fill"
-                android_material_icon_name="email"
-                size={20}
-                color={colors.text}
-              />
-              <Text style={styles.quickActionText}>Email</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* MANAGER PERFORMANCE SECTION */}
-        <View style={styles.statsCard}>
+        {/* PERFORMANCE SUMMARY SECTION */}
+        <View style={styles.performanceCard}>
           <Text style={styles.sectionTitle}>Performance Summary</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <View style={styles.statIconContainer}>
-                <IconSymbol
-                  ios_icon_name="person.3.fill"
-                  android_material_icon_name="group"
-                  size={24}
-                  color={colors.primary}
-                />
-              </View>
-              <Text style={styles.statValue}>{stats.totalCreators}</Text>
-              <Text style={styles.statLabel}>Total Creators</Text>
+          
+          {/* HERO: Collective Diamonds */}
+          <View style={styles.heroMetric}>
+            <View style={styles.heroIconContainer}>
+              <IconSymbol
+                ios_icon_name="diamond.fill"
+                android_material_icon_name="diamond"
+                size={32}
+                color="#06B6D4"
+              />
             </View>
+            <Animated.Text style={styles.heroValue}>
+              {diamondsAnim.interpolate({
+                inputRange: [0, stats.collectiveDiamonds],
+                outputRange: ['0', stats.collectiveDiamonds.toLocaleString()],
+              })}
+            </Animated.Text>
+            <Text style={styles.heroLabel}>This Month (Sum of Active Creators)</Text>
+          </View>
 
-            <View style={styles.statBox}>
-              <View style={styles.statIconContainer}>
+          {/* Graduation Breakdown */}
+          <View style={styles.graduationBreakdown}>
+            <View style={styles.miniCard}>
+              <View style={[styles.miniCardIcon, { backgroundColor: colors.primary }]}>
                 <IconSymbol
                   ios_icon_name="star.fill"
                   android_material_icon_name="star"
-                  size={24}
-                  color="#10B981"
+                  size={20}
+                  color="#FFFFFF"
                 />
               </View>
-              <Text style={styles.statValue}>{stats.totalRookies}</Text>
-              <Text style={styles.statLabel}>Rookies</Text>
+              <Text style={styles.miniCardValue}>{stats.totalRookies}</Text>
+              <Text style={styles.miniCardLabel}>Rookies</Text>
             </View>
 
-            <View style={styles.statBox}>
-              <View style={styles.statIconContainer}>
+            <View style={styles.miniCard}>
+              <View style={[styles.miniCardIcon, { backgroundColor: '#C0C0C0' }]}>
                 <IconSymbol
                   ios_icon_name="trophy.fill"
                   android_material_icon_name="emoji-events"
-                  size={24}
-                  color="#FFD700"
+                  size={20}
+                  color="#000000"
                 />
               </View>
-              <Text style={styles.statValue}>{stats.totalGraduated}</Text>
-              <Text style={styles.statLabel}>Graduated</Text>
+              <Text style={styles.miniCardValue}>{stats.totalSilver}</Text>
+              <Text style={styles.miniCardLabel}>Silver Graduates</Text>
             </View>
 
-            <View style={styles.statBox}>
-              <View style={styles.statIconContainer}>
+            <View style={styles.miniCard}>
+              <View style={[styles.miniCardIcon, { backgroundColor: '#FFD700' }]}>
                 <IconSymbol
-                  ios_icon_name="diamond.fill"
-                  android_material_icon_name="diamond"
-                  size={24}
-                  color="#06B6D4"
+                  ios_icon_name="trophy.fill"
+                  android_material_icon_name="emoji-events"
+                  size={20}
+                  color="#000000"
                 />
               </View>
-              <Text style={styles.statValue}>
-                {stats.collectiveDiamonds.toLocaleString()}
-              </Text>
-              <Text style={styles.statLabel}>Monthly Diamonds</Text>
+              <Text style={styles.miniCardValue}>{stats.totalGold}</Text>
+              <Text style={styles.miniCardLabel}>Gold Graduates</Text>
             </View>
+          </View>
+
+          {/* Battles Tracking */}
+          <View style={styles.battlesBlock}>
+            <Text style={styles.battlesTitle}>Battles Tracking</Text>
+            <View style={styles.battlesRow}>
+              <TouchableOpacity 
+                style={styles.battleStat}
+                onPress={() => setFilterBattle('booked')}
+              >
+                <IconSymbol
+                  ios_icon_name="checkmark.circle.fill"
+                  android_material_icon_name="check-circle"
+                  size={24}
+                  color={colors.success}
+                />
+                <Text style={styles.battleStatValue}>{stats.creatorsBookedBattle}</Text>
+                <Text style={styles.battleStatLabel}>Booked a Battle</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.battleStat}
+                onPress={() => setFilterBattle('missing')}
+              >
+                <IconSymbol
+                  ios_icon_name="exclamationmark.circle.fill"
+                  android_material_icon_name="error"
+                  size={24}
+                  color={colors.warning}
+                />
+                <Text style={styles.battleStatValue}>{stats.creatorsMissingBattle}</Text>
+                <Text style={styles.battleStatLabel}>Missing a Battle</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.battlesHelper}>
+              Tap counts to filter the creator list
+            </Text>
           </View>
         </View>
 
-        {/* ASSIGNED CREATORS SECTION */}
+        {/* MY CREATORS SECTION */}
         <View style={styles.creatorsCard}>
           <Text style={styles.sectionTitle}>
-            My Assigned Creators ({assignedCreators.length})
+            My Creators ({filteredAndSortedCreators.length})
           </Text>
-          
-          {assignedCreators.length === 0 ? (
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <IconSymbol
+              ios_icon_name="magnifyingglass"
+              android_material_icon_name="search"
+              size={20}
+              color={colors.textSecondary}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by handle or name..."
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <IconSymbol
+                  ios_icon_name="xmark.circle.fill"
+                  android_material_icon_name="cancel"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Filters */}
+          <View style={styles.filtersContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+              {/* Sort Options */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterGroupLabel}>Sort:</Text>
+                <TouchableOpacity 
+                  style={[styles.filterChip, sortBy === 'diamonds_high' && styles.filterChipActive]}
+                  onPress={() => setSortBy('diamonds_high')}
+                >
+                  <Text style={[styles.filterChipText, sortBy === 'diamonds_high' && styles.filterChipTextActive]}>
+                    💎 High → Low
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, sortBy === 'diamonds_low' && styles.filterChipActive]}
+                  onPress={() => setSortBy('diamonds_low')}
+                >
+                  <Text style={[styles.filterChipText, sortBy === 'diamonds_low' && styles.filterChipTextActive]}>
+                    💎 Low → High
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, sortBy === 'closest_graduation' && styles.filterChipActive]}
+                  onPress={() => setSortBy('closest_graduation')}
+                >
+                  <Text style={[styles.filterChipText, sortBy === 'closest_graduation' && styles.filterChipTextActive]}>
+                    🎯 Closest
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, sortBy === 'battle_missing' && styles.filterChipActive]}
+                  onPress={() => setSortBy('battle_missing')}
+                >
+                  <Text style={[styles.filterChipText, sortBy === 'battle_missing' && styles.filterChipTextActive]}>
+                    ⚔️ Missing First
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, sortBy === 'eligible_first' && styles.filterChipActive]}
+                  onPress={() => setSortBy('eligible_first')}
+                >
+                  <Text style={[styles.filterChipText, sortBy === 'eligible_first' && styles.filterChipTextActive]}>
+                    💰 Eligible First
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Status Filter */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterGroupLabel}>Status:</Text>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterStatus === 'all' && styles.filterChipActive]}
+                  onPress={() => setFilterStatus('all')}
+                >
+                  <Text style={[styles.filterChipText, filterStatus === 'all' && styles.filterChipTextActive]}>
+                    All
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterStatus === 'rookie' && styles.filterChipActive]}
+                  onPress={() => setFilterStatus('rookie')}
+                >
+                  <Text style={[styles.filterChipText, filterStatus === 'rookie' && styles.filterChipTextActive]}>
+                    Rookie
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterStatus === 'silver' && styles.filterChipActive]}
+                  onPress={() => setFilterStatus('silver')}
+                >
+                  <Text style={[styles.filterChipText, filterStatus === 'silver' && styles.filterChipTextActive]}>
+                    Silver
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterStatus === 'gold' && styles.filterChipActive]}
+                  onPress={() => setFilterStatus('gold')}
+                >
+                  <Text style={[styles.filterChipText, filterStatus === 'gold' && styles.filterChipTextActive]}>
+                    Gold
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Battle Filter */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterGroupLabel}>Battle:</Text>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterBattle === 'all' && styles.filterChipActive]}
+                  onPress={() => setFilterBattle('all')}
+                >
+                  <Text style={[styles.filterChipText, filterBattle === 'all' && styles.filterChipTextActive]}>
+                    All
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterBattle === 'booked' && styles.filterChipActive]}
+                  onPress={() => setFilterBattle('booked')}
+                >
+                  <Text style={[styles.filterChipText, filterBattle === 'booked' && styles.filterChipTextActive]}>
+                    Booked
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterBattle === 'missing' && styles.filterChipActive]}
+                  onPress={() => setFilterBattle('missing')}
+                >
+                  <Text style={[styles.filterChipText, filterBattle === 'missing' && styles.filterChipTextActive]}>
+                    Missing
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Payout Filter */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterGroupLabel}>Payout:</Text>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterPayout === 'all' && styles.filterChipActive]}
+                  onPress={() => setFilterPayout('all')}
+                >
+                  <Text style={[styles.filterChipText, filterPayout === 'all' && styles.filterChipTextActive]}>
+                    All
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterPayout === 'eligible' && styles.filterChipActive]}
+                  onPress={() => setFilterPayout('eligible')}
+                >
+                  <Text style={[styles.filterChipText, filterPayout === 'eligible' && styles.filterChipTextActive]}>
+                    Eligible
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterPayout === 'ineligible' && styles.filterChipActive]}
+                  onPress={() => setFilterPayout('ineligible')}
+                >
+                  <Text style={[styles.filterChipText, filterPayout === 'ineligible' && styles.filterChipTextActive]}>
+                    Ineligible
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.filterChip, filterPayout === 'paid' && styles.filterChipActive]}
+                  onPress={() => setFilterPayout('paid')}
+                >
+                  <Text style={[styles.filterChipText, filterPayout === 'paid' && styles.filterChipTextActive]}>
+                    Paid
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Creators List */}
+          {filteredAndSortedCreators.length === 0 ? (
             <View style={styles.emptyState}>
               <IconSymbol
                 ios_icon_name="person.crop.circle.badge.questionmark"
@@ -562,122 +812,261 @@ export default function ManagerPortalScreen() {
                 size={48}
                 color={colors.textSecondary}
               />
-              <Text style={styles.emptyStateText}>No creators assigned yet</Text>
+              <Text style={styles.emptyStateText}>
+                {searchQuery || filterStatus !== 'all' || filterBattle !== 'all' || filterPayout !== 'all'
+                  ? 'No creators match your filters'
+                  : 'No creators assigned yet'}
+              </Text>
             </View>
           ) : (
             <View style={styles.creatorsList}>
-              {assignedCreators.map((assignedCreator, index) => (
-                <View key={assignedCreator.id} style={styles.creatorRow}>
-                  {/* Creator Avatar */}
-                  <View style={styles.creatorAvatarContainer}>
-                    {assignedCreator.avatar_url || assignedCreator.profile_picture_url ? (
-                      <Image
-                        source={{ uri: assignedCreator.avatar_url || assignedCreator.profile_picture_url }}
-                        style={styles.creatorAvatar}
+              {filteredAndSortedCreators.map((assignedCreator) => {
+                const isExpanded = expandedCreatorId === assignedCreator.id;
+                const currentLevel = getGraduationLevel(assignedCreator.graduation_status);
+                const diamondsToNext = getDiamondsToNextGraduation(assignedCreator.diamonds_monthly, currentLevel);
+                const nextTarget = getNextGraduationTarget(currentLevel);
+                const progressPercentage = getProgressPercentage(assignedCreator.diamonds_monthly, currentLevel);
+                const isEligible = assignedCreator.graduation_eligible && !assignedCreator.graduation_paid_this_month && !assignedCreator.was_graduated_at_assignment;
+                const isPaid = assignedCreator.graduation_paid_this_month;
+                const isIneligible = assignedCreator.was_graduated_at_assignment;
+
+                return (
+                  <View key={assignedCreator.id} style={styles.creatorCard}>
+                    {/* Collapsed Row */}
+                    <TouchableOpacity 
+                      style={styles.creatorRowCollapsed}
+                      onPress={() => toggleCreatorExpand(assignedCreator.id)}
+                      activeOpacity={0.7}
+                    >
+                      {/* Avatar */}
+                      <View style={styles.creatorAvatarContainer}>
+                        {assignedCreator.avatar_url || assignedCreator.profile_picture_url ? (
+                          <Image
+                            source={{ uri: assignedCreator.avatar_url || assignedCreator.profile_picture_url }}
+                            style={styles.creatorAvatar}
+                          />
+                        ) : (
+                          <View style={styles.creatorAvatarPlaceholder}>
+                            <IconSymbol
+                              ios_icon_name="person.fill"
+                              android_material_icon_name="person"
+                              size={20}
+                              color={colors.textSecondary}
+                            />
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Info */}
+                      <View style={styles.creatorInfoCollapsed}>
+                        <View style={styles.creatorNameRow}>
+                          <Text style={styles.creatorName}>
+                            @{assignedCreator.creator_handle}
+                          </Text>
+                          <View 
+                            style={[
+                              styles.statusPill,
+                              { backgroundColor: getGraduationBadgeColor(assignedCreator.graduation_status) }
+                            ]}
+                          >
+                            <Text style={styles.statusPillText}>
+                              {currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1)}
+                            </Text>
+                          </View>
+                        </View>
+                        
+                        <View style={styles.creatorStatsRow}>
+                          <View style={styles.creatorStat}>
+                            <IconSymbol
+                              ios_icon_name="diamond.fill"
+                              android_material_icon_name="diamond"
+                              size={14}
+                              color={colors.textSecondary}
+                            />
+                            <Text style={styles.creatorStatText}>
+                              {assignedCreator.diamonds_monthly.toLocaleString()}
+                            </Text>
+                          </View>
+                          {currentLevel !== 'gold' && (
+                            <Text style={styles.diamondsToNext}>
+                              {diamondsToNext.toLocaleString()} to {nextTarget}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+
+                      {/* Expand Icon */}
+                      <IconSymbol
+                        ios_icon_name={isExpanded ? "chevron.up" : "chevron.down"}
+                        android_material_icon_name={isExpanded ? "expand-less" : "expand-more"}
+                        size={24}
+                        color={colors.textSecondary}
                       />
-                    ) : (
-                      <View style={styles.creatorAvatarPlaceholder}>
-                        <IconSymbol
-                          ios_icon_name="person.fill"
-                          android_material_icon_name="person"
-                          size={20}
-                          color={colors.textSecondary}
-                        />
+                    </TouchableOpacity>
+
+                    {/* Expanded Details */}
+                    {isExpanded && (
+                      <View style={styles.creatorExpanded}>
+                        {/* Graduation Progress */}
+                        {currentLevel !== 'gold' && (
+                          <View style={styles.expandedSection}>
+                            <Text style={styles.expandedSectionTitle}>
+                              Progress to {nextTarget}
+                            </Text>
+                            <View style={styles.progressBarContainer}>
+                              <View style={styles.progressBarBg}>
+                                <View 
+                                  style={[
+                                    styles.progressBarFill,
+                                    { 
+                                      width: `${progressPercentage}%`,
+                                      backgroundColor: currentLevel === 'silver' ? '#FFD700' : '#C0C0C0'
+                                    }
+                                  ]}
+                                />
+                              </View>
+                            </View>
+                            <View style={styles.progressStats}>
+                              <Text style={styles.progressStatText}>
+                                Current: {assignedCreator.diamonds_monthly.toLocaleString()}
+                              </Text>
+                              <Text style={styles.progressStatText}>
+                                Target: {(currentLevel === 'silver' ? GOLD_THRESHOLD : SILVER_THRESHOLD).toLocaleString()}
+                              </Text>
+                              <Text style={styles.progressStatText}>
+                                Remaining: {diamondsToNext.toLocaleString()}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Battle Status */}
+                        <View style={styles.expandedSection}>
+                          <Text style={styles.expandedSectionTitle}>Battle Status</Text>
+                          <View style={styles.battleStatusRow}>
+                            {assignedCreator.battle_booked ? (
+                              <>
+                                <IconSymbol
+                                  ios_icon_name="checkmark.circle.fill"
+                                  android_material_icon_name="check-circle"
+                                  size={20}
+                                  color={colors.success}
+                                />
+                                <Text style={styles.battleStatusText}>Battle: Booked ✅</Text>
+                              </>
+                            ) : (
+                              <>
+                                <IconSymbol
+                                  ios_icon_name="exclamationmark.circle.fill"
+                                  android_material_icon_name="error"
+                                  size={20}
+                                  color={colors.warning}
+                                />
+                                <Text style={styles.battleStatusText}>Battle: Missing ⚠️</Text>
+                              </>
+                            )}
+                          </View>
+                          {!assignedCreator.battle_booked && (
+                            <TouchableOpacity style={styles.ctaButton}>
+                              <Text style={styles.ctaButtonText}>Remind Creator</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+
+                        {/* Manager Payout Info */}
+                        <View style={styles.expandedSection}>
+                          <Text style={styles.expandedSectionTitle}>Manager Payout Info</Text>
+                          <View style={styles.payoutInfo}>
+                            <Text style={styles.payoutInfoText}>
+                              • Manager earns ${SILVER_PAYOUT} per Silver graduation
+                            </Text>
+                            <Text style={styles.payoutInfoText}>
+                              • Manager earns ${GOLD_PAYOUT} per Gold graduation
+                            </Text>
+                          </View>
+                          <View style={styles.payoutRules}>
+                            <Text style={styles.payoutRulesTitle}>Rules:</Text>
+                            <Text style={styles.payoutRulesText}>
+                              ✓ Manager earns only on the first graduation per creator per month
+                            </Text>
+                            <Text style={styles.payoutRulesText}>
+                              ✓ If creator is already Silver/Gold when assigned → $0 earned
+                            </Text>
+                            <Text style={styles.payoutRulesText}>
+                              ✓ After graduation, no more bonuses from that creator for the month
+                            </Text>
+                          </View>
+                          {isIneligible && (
+                            <View style={styles.ineligibleBanner}>
+                              <Text style={styles.ineligibleText}>
+                                Ineligible — Already Graduated
+                              </Text>
+                            </View>
+                          )}
+                          {isPaid && (
+                            <View style={styles.paidBanner}>
+                              <Text style={styles.paidText}>
+                                Bonus earned this month ✅
+                              </Text>
+                            </View>
+                          )}
+                          {isEligible && !isPaid && (
+                            <View style={styles.eligibleBanner}>
+                              <Text style={styles.eligibleText}>
+                                Eligible for bonus 💰
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Contact Actions */}
+                        <View style={styles.creatorActions}>
+                          <TouchableOpacity 
+                            style={styles.creatorActionButton}
+                            onPress={() => handleEmailPress(assignedCreator.email)}
+                          >
+                            <IconSymbol
+                              ios_icon_name="envelope.fill"
+                              android_material_icon_name="email"
+                              size={16}
+                              color={colors.primary}
+                            />
+                            <Text style={styles.creatorActionText}>Email</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity 
+                            style={styles.creatorActionButton}
+                            onPress={() => handleTikTokPress(assignedCreator.creator_handle)}
+                          >
+                            <IconSymbol
+                              ios_icon_name="music.note"
+                              android_material_icon_name="music-note"
+                              size={16}
+                              color={colors.primary}
+                            />
+                            <Text style={styles.creatorActionText}>TikTok</Text>
+                          </TouchableOpacity>
+
+                          {assignedCreator.phone && (
+                            <TouchableOpacity 
+                              style={styles.creatorActionButton}
+                              onPress={() => handleWhatsAppPress(assignedCreator.phone!)}
+                            >
+                              <IconSymbol
+                                ios_icon_name="message.fill"
+                                android_material_icon_name="chat"
+                                size={16}
+                                color={colors.primary}
+                              />
+                              <Text style={styles.creatorActionText}>WhatsApp</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       </View>
                     )}
                   </View>
-
-                  {/* Creator Info */}
-                  <View style={styles.creatorInfo}>
-                    <View style={styles.creatorNameRow}>
-                      <Text style={styles.creatorName}>
-                        {assignedCreator.first_name} {assignedCreator.last_name}
-                      </Text>
-                      {assignedCreator.graduation_status && (
-                        <View 
-                          style={[
-                            styles.graduationBadge,
-                            { backgroundColor: getGraduationBadgeColor(assignedCreator.graduation_status) }
-                          ]}
-                        >
-                          <Text style={styles.graduationBadgeText}>
-                            {assignedCreator.graduation_status}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    
-                    <View style={styles.creatorDetailsRow}>
-                      {assignedCreator.region && (
-                        <View style={styles.creatorDetail}>
-                          <IconSymbol
-                            ios_icon_name="location.fill"
-                            android_material_icon_name="location-on"
-                            size={14}
-                            color={colors.textSecondary}
-                          />
-                          <Text style={styles.creatorDetailText}>{assignedCreator.region}</Text>
-                        </View>
-                      )}
-                      <View style={styles.creatorDetail}>
-                        <IconSymbol
-                          ios_icon_name="diamond.fill"
-                          android_material_icon_name="diamond"
-                          size={14}
-                          color={colors.textSecondary}
-                        />
-                        <Text style={styles.creatorDetailText}>
-                          {assignedCreator.diamonds_monthly.toLocaleString()} / month
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Contact Actions */}
-                    <View style={styles.creatorActions}>
-                      <TouchableOpacity 
-                        style={styles.creatorActionButton}
-                        onPress={() => handleEmailPress(assignedCreator.email)}
-                      >
-                        <IconSymbol
-                          ios_icon_name="envelope.fill"
-                          android_material_icon_name="email"
-                          size={16}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.creatorActionText}>Email</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity 
-                        style={styles.creatorActionButton}
-                        onPress={() => handleTikTokPress(assignedCreator.creator_handle)}
-                      >
-                        <IconSymbol
-                          ios_icon_name="music.note"
-                          android_material_icon_name="music-note"
-                          size={16}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.creatorActionText}>TikTok</Text>
-                      </TouchableOpacity>
-
-                      {assignedCreator.phone && (
-                        <TouchableOpacity 
-                          style={styles.creatorActionButton}
-                          onPress={() => handleWhatsAppPress(assignedCreator.phone!)}
-                        >
-                          <IconSymbol
-                            ios_icon_name="message.fill"
-                            android_material_icon_name="chat"
-                            size={16}
-                            color={colors.primary}
-                          />
-                          <Text style={styles.creatorActionText}>WhatsApp</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -729,109 +1118,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // HEADER CARD
-  headerCard: {
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 20,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  profileImageContainer: {
-    position: 'relative',
-    marginRight: 16,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: colors.primary,
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.success,
-    borderWidth: 3,
-    borderColor: colors.backgroundAlt,
-  },
-  headerInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  managerName: {
-    fontSize: 24,
-    fontFamily: 'Poppins_700Bold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  emailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  emailText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: colors.primary,
-  },
-  managerSinceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  managerSinceText: {
-    fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
-    color: colors.textSecondary,
-  },
-  managerDetails: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  detailLabel: {
-    fontSize: 14,
-    fontFamily: 'Poppins_600SemiBold',
-    color: colors.textSecondary,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: colors.text,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  quickActionButton: {
-    flex: 1,
-    backgroundColor: colors.grey,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    gap: 4,
-  },
-  quickActionText: {
-    fontSize: 12,
-    fontFamily: 'Poppins_600SemiBold',
-    color: colors.text,
-  },
-
-  // STATS CARD
-  statsCard: {
+  // PERFORMANCE SUMMARY
+  performanceCard: {
     backgroundColor: colors.backgroundAlt,
     borderRadius: 24,
     padding: 24,
@@ -843,47 +1131,169 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 20,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  heroMetric: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    marginBottom: 24,
+    borderRadius: 20,
+    backgroundColor: colors.grey,
   },
-  statBox: {
+  heroIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.backgroundAlt,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  heroValue: {
+    fontSize: 48,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  heroLabel: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  graduationBreakdown: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  miniCard: {
     flex: 1,
-    minWidth: '45%',
     backgroundColor: colors.grey,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
   },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.backgroundAlt,
+  miniCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
-  statValue: {
-    fontSize: 28,
+  miniCardValue: {
+    fontSize: 24,
     fontFamily: 'Poppins_700Bold',
     color: colors.text,
     marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 13,
+  miniCardLabel: {
+    fontSize: 11,
     fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  battlesBlock: {
+    backgroundColor: colors.grey,
+    borderRadius: 16,
+    padding: 16,
+  },
+  battlesTitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  battlesRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  battleStat: {
+    flex: 1,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  battleStatValue: {
+    fontSize: 20,
+    fontFamily: 'Poppins_700Bold',
+    color: colors.text,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  battleStatLabel: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  battlesHelper: {
+    fontSize: 11,
+    fontFamily: 'Poppins_400Regular',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
 
-  // CREATORS CARD
+  // CREATORS SECTION
   creatorsCard: {
     backgroundColor: colors.backgroundAlt,
     borderRadius: 24,
     padding: 24,
     marginBottom: 20,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.grey,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.text,
+  },
+  filtersContainer: {
+    marginBottom: 16,
+  },
+  filtersScroll: {
+    flexDirection: 'row',
+  },
+  filterGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginRight: 16,
+  },
+  filterGroupLabel: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.textSecondary,
+  },
+  filterChip: {
+    backgroundColor: colors.grey,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.textSecondary,
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
   },
   emptyState: {
     alignItems: 'center',
@@ -894,14 +1304,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
     marginTop: 12,
+    textAlign: 'center',
   },
   creatorsList: {
-    gap: 16,
+    gap: 12,
   },
-  creatorRow: {
-    flexDirection: 'row',
+  creatorCard: {
     backgroundColor: colors.grey,
     borderRadius: 16,
+    overflow: 'hidden',
+  },
+  creatorRowCollapsed: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
   },
   creatorAvatarContainer: {
@@ -920,7 +1335,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  creatorInfo: {
+  creatorInfoCollapsed: {
     flex: 1,
   },
   creatorNameRow: {
@@ -935,30 +1350,166 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     color: colors.text,
   },
-  graduationBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  graduationBadgeText: {
-    fontSize: 10,
+  statusPillText: {
+    fontSize: 11,
     fontFamily: 'Poppins_700Bold',
     color: '#000000',
   },
-  creatorDetailsRow: {
+  creatorStatsRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 12,
+    alignItems: 'center',
+    gap: 12,
   },
-  creatorDetail: {
+  creatorStat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  creatorDetailText: {
+  creatorStatText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+  },
+  diamondsToNext: {
     fontSize: 13,
     fontFamily: 'Poppins_500Medium',
     color: colors.textSecondary,
+  },
+  creatorExpanded: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 16,
+  },
+  expandedSection: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    padding: 16,
+  },
+  expandedSectionTitle: {
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  progressBarContainer: {
+    marginBottom: 12,
+  },
+  progressBarBg: {
+    height: 12,
+    backgroundColor: colors.grey,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+  progressStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressStatText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.textSecondary,
+  },
+  battleStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  battleStatusText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+  },
+  ctaButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  ctaButtonText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+  },
+  payoutInfo: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  payoutInfoText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_500Medium',
+    color: colors.text,
+  },
+  payoutRules: {
+    backgroundColor: colors.grey,
+    borderRadius: 8,
+    padding: 12,
+    gap: 6,
+  },
+  payoutRulesTitle: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  payoutRulesText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  ineligibleBanner: {
+    backgroundColor: colors.error + '20',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  ineligibleText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.error,
+    textAlign: 'center',
+  },
+  paidBanner: {
+    backgroundColor: colors.success + '20',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
+  paidText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.success,
+    textAlign: 'center',
+  },
+  eligibleBanner: {
+    backgroundColor: colors.primary + '20',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  eligibleText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    color: colors.primary,
+    textAlign: 'center',
   },
   creatorActions: {
     flexDirection: 'row',
@@ -971,7 +1522,7 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: colors.backgroundAlt,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 8,
   },
   creatorActionText: {
