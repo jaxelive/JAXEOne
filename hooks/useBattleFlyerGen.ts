@@ -32,6 +32,14 @@ export function useBattleFlyerGen() {
   }, []);
 
   const generate = useCallback(async (params: BattleFlyerParams): Promise<BattleFlyerResult | null> => {
+    console.log('Starting flyer generation with params:', {
+      title: params.title,
+      creatorName: params.creatorName,
+      opponentName: params.opponentName,
+      battleDate: params.battleDate,
+      hasImage: !!params.image.uri
+    });
+
     if (!params.title.trim() || params.title.length > 40) {
       setState({ status: 'error', data: null, error: 'Title must be 1-40 characters.' });
       return null;
@@ -60,6 +68,13 @@ export function useBattleFlyerGen() {
     setState({ status: 'loading', data: null, error: null });
 
     try {
+      console.log('Getting Supabase session...');
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
+
+      console.log('Creating FormData...');
       const form = new FormData();
       form.append('title', params.title);
       form.append('creatorName', params.creatorName);
@@ -71,32 +86,38 @@ export function useBattleFlyerGen() {
         type: params.image.type ?? 'image/jpeg',
       } as any);
 
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.access_token) {
-        throw new Error('Not authenticated');
-      }
+      const url = `${supabase.supabaseUrl}/functions/v1/generate-battle-flyer`;
+      console.log('Calling edge function:', url);
 
-      const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/generate-battle-flyer`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.session.access_token}`,
-          },
-          body: form,
-        }
-      );
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+        body: form,
+      });
+
+      console.log('Response status:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate flyer');
+        let errorMessage = 'Failed to generate flyer';
+        try {
+          const errorData = await response.json();
+          console.error('Error response:', errorData);
+          errorMessage = errorData.detail || errorData.error || errorMessage;
+        } catch (e) {
+          console.error('Failed to parse error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json() as BattleFlyerResult;
+      console.log('Flyer generated successfully:', result);
       setState({ status: 'success', data: result, error: null });
       return result;
     } catch (err: any) {
-      const message = err?.message ?? 'Unknown error';
+      const message = err?.message ?? 'Unknown error occurred';
+      console.error('Error generating flyer:', message, err);
       setState({ status: 'error', data: null, error: message });
       return null;
     }

@@ -103,7 +103,14 @@ export default function AIFlyersScreen() {
       setGeneratedFlyerUrl(result.url);
       Alert.alert('Success', 'Your battle flyer has been forged!');
     } else if (error) {
-      Alert.alert('Error', error);
+      // Show detailed error message
+      Alert.alert(
+        'Generation Failed', 
+        error.includes('GEMINI_API_KEY') 
+          ? 'The AI service is not configured. Please contact support to set up the GEMINI_API_KEY.'
+          : error,
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -179,7 +186,21 @@ export default function AIFlyersScreen() {
           <Text style={styles.emoji}>⚔️</Text>
           <Text style={styles.headerTitle}>Official Battle Generator</Text>
           <Text style={styles.headerSubtitle}>Create epic medieval warrior battle flyers</Text>
+          <Text style={styles.headerNote}>Powered by Google Gemini AI</Text>
         </LinearGradient>
+
+        {/* Error Display */}
+        {error && !loading && (
+          <View style={styles.errorCard}>
+            <IconSymbol ios_icon_name="exclamationmark.triangle.fill" android_material_icon_name="error" size={24} color="#FF6B6B" />
+            <Text style={styles.errorText}>{error}</Text>
+            {error.includes('GEMINI_API_KEY') && (
+              <Text style={styles.errorHint}>
+                The administrator needs to configure the GEMINI_API_KEY environment variable in Supabase Edge Functions.
+              </Text>
+            )}
+          </View>
+        )}
 
         {!generatedFlyerUrl ? (
           <>
@@ -300,6 +321,14 @@ export default function AIFlyersScreen() {
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
+
+            {loading && (
+              <View style={styles.loadingInfo}>
+                <Text style={styles.loadingText}>
+                  This may take 10-30 seconds. The AI is creating your custom battle flyer...
+                </Text>
+              </View>
+            )}
           </>
         ) : (
           <>
@@ -373,6 +402,33 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  headerNote: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  errorCard: {
+    backgroundColor: '#FF6B6B20',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FF6B6B40',
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF6B6B',
+  },
+  errorHint: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   section: {
     marginBottom: 24,
@@ -467,7 +523,7 @@ const styles = StyleSheet.create({
   generateButton: {
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -483,6 +539,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  loadingInfo: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   flyerPreview: {
     borderRadius: 24,
