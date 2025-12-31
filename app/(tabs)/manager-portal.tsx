@@ -93,7 +93,7 @@ interface ManagerRanking {
 type CreatorStatusTab = 'rookie' | 'silver' | 'gold';
 type FilterBattle = 'all' | 'booked' | 'missing';
 type FilterPayout = 'all' | 'eligible' | 'ineligible' | 'paid';
-type TabOption = 'overview' | 'rankings';
+type TabOption = 'overview' | 'my-creators' | 'rankings';
 
 export default function ManagerPortalScreen() {
   const [fontsLoaded] = useFonts({
@@ -694,7 +694,7 @@ export default function ManagerPortalScreen() {
         }}
       />
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation - Reordered: Overview, My Creators, Rankings */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
@@ -702,6 +702,14 @@ export default function ManagerPortalScreen() {
         >
           <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
             Overview
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'my-creators' && styles.tabActive]}
+          onPress={() => setActiveTab('my-creators')}
+        >
+          <Text style={[styles.tabText, activeTab === 'my-creators' && styles.tabTextActive]}>
+            My Creators
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -992,7 +1000,10 @@ export default function ManagerPortalScreen() {
                 <View style={styles.battlesRow}>
                   <TouchableOpacity 
                     style={styles.battleStat}
-                    onPress={() => setFilterBattle('booked')}
+                    onPress={() => {
+                      setFilterBattle('booked');
+                      setActiveTab('my-creators');
+                    }}
                   >
                     <IconSymbol
                       ios_icon_name="checkmark.circle.fill"
@@ -1006,7 +1017,10 @@ export default function ManagerPortalScreen() {
 
                   <TouchableOpacity 
                     style={styles.battleStat}
-                    onPress={() => setFilterBattle('missing')}
+                    onPress={() => {
+                      setFilterBattle('missing');
+                      setActiveTab('my-creators');
+                    }}
                   >
                     <IconSymbol
                       ios_icon_name="exclamationmark.circle.fill"
@@ -1023,274 +1037,274 @@ export default function ManagerPortalScreen() {
                 </Text>
               </View>
             </View>
+          </>
+        ) : activeTab === 'my-creators' ? (
+          /* MY CREATORS TAB */
+          <View style={styles.creatorsCard}>
+            <Text style={styles.sectionTitle}>
+              My Creators ({filteredAndSortedCreators.length})
+            </Text>
 
-            {/* MY CREATORS SECTION */}
-            <View style={styles.creatorsCard}>
-              <Text style={styles.sectionTitle}>
-                My Creators ({filteredAndSortedCreators.length})
-              </Text>
-
-              {/* Search Bar */}
-              <View style={styles.searchContainer}>
-                <IconSymbol
-                  ios_icon_name="magnifyingglass"
-                  android_material_icon_name="search"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search by handle or name..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <IconSymbol
-                      ios_icon_name="xmark.circle.fill"
-                      android_material_icon_name="cancel"
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* STATUS TABS - Replace Sorting */}
-              <View style={styles.statusTabsContainer}>
-                <TouchableOpacity
-                  style={[styles.statusTab, activeStatusTab === 'rookie' && styles.statusTabActive]}
-                  onPress={() => setActiveStatusTab('rookie')}
-                >
-                  <Text style={[styles.statusTabText, activeStatusTab === 'rookie' && styles.statusTabTextActive]}>
-                    Rookies
-                  </Text>
-                  <View style={[styles.statusTabBadge, activeStatusTab === 'rookie' && styles.statusTabBadgeActive]}>
-                    <Text style={[styles.statusTabBadgeText, activeStatusTab === 'rookie' && styles.statusTabBadgeTextActive]}>
-                      {stats.totalRookies}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.statusTab, activeStatusTab === 'silver' && styles.statusTabActive]}
-                  onPress={() => setActiveStatusTab('silver')}
-                >
-                  <Text style={[styles.statusTabText, activeStatusTab === 'silver' && styles.statusTabTextActive]}>
-                    Silvers
-                  </Text>
-                  <View style={[styles.statusTabBadge, activeStatusTab === 'silver' && styles.statusTabBadgeActive]}>
-                    <Text style={[styles.statusTabBadgeText, activeStatusTab === 'silver' && styles.statusTabBadgeTextActive]}>
-                      {stats.totalSilver}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.statusTab, activeStatusTab === 'gold' && styles.statusTabActive]}
-                  onPress={() => setActiveStatusTab('gold')}
-                >
-                  <Text style={[styles.statusTabText, activeStatusTab === 'gold' && styles.statusTabTextActive]}>
-                    Graduated (Gold)
-                  </Text>
-                  <View style={[styles.statusTabBadge, activeStatusTab === 'gold' && styles.statusTabBadgeActive]}>
-                    <Text style={[styles.statusTabBadgeText, activeStatusTab === 'gold' && styles.statusTabBadgeTextActive]}>
-                      {stats.totalGold}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-
-              {/* Additional Filters */}
-              <View style={styles.filtersContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
-                  {/* Battle Filter */}
-                  <View style={styles.filterGroup}>
-                    <Text style={styles.filterGroupLabel}>Battle:</Text>
-                    <TouchableOpacity 
-                      style={[styles.filterChip, filterBattle === 'all' && styles.filterChipActive]}
-                      onPress={() => setFilterBattle('all')}
-                    >
-                      <Text style={[styles.filterChipText, filterBattle === 'all' && styles.filterChipTextActive]}>
-                        All
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.filterChip, filterBattle === 'booked' && styles.filterChipActive]}
-                      onPress={() => setFilterBattle('booked')}
-                    >
-                      <Text style={[styles.filterChipText, filterBattle === 'booked' && styles.filterChipTextActive]}>
-                        Booked
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.filterChip, filterBattle === 'missing' && styles.filterChipActive]}
-                      onPress={() => setFilterBattle('missing')}
-                    >
-                      <Text style={[styles.filterChipText, filterBattle === 'missing' && styles.filterChipTextActive]}>
-                        Missing
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Payout Filter */}
-                  <View style={styles.filterGroup}>
-                    <Text style={styles.filterGroupLabel}>Payout:</Text>
-                    <TouchableOpacity 
-                      style={[styles.filterChip, filterPayout === 'all' && styles.filterChipActive]}
-                      onPress={() => setFilterPayout('all')}
-                    >
-                      <Text style={[styles.filterChipText, filterPayout === 'all' && styles.filterChipTextActive]}>
-                        All
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.filterChip, filterPayout === 'eligible' && styles.filterChipActive]}
-                      onPress={() => setFilterPayout('eligible')}
-                    >
-                      <Text style={[styles.filterChipText, filterPayout === 'eligible' && styles.filterChipTextActive]}>
-                        Eligible
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.filterChip, filterPayout === 'ineligible' && styles.filterChipActive]}
-                      onPress={() => setFilterPayout('ineligible')}
-                    >
-                      <Text style={[styles.filterChipText, filterPayout === 'ineligible' && styles.filterChipTextActive]}>
-                        Ineligible
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.filterChip, filterPayout === 'paid' && styles.filterChipActive]}
-                      onPress={() => setFilterPayout('paid')}
-                    >
-                      <Text style={[styles.filterChipText, filterPayout === 'paid' && styles.filterChipTextActive]}>
-                        Paid
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
-              </View>
-
-              {/* Creators List - COMPACT CARDS ONLY */}
-              {filteredAndSortedCreators.length === 0 ? (
-                <View style={styles.emptyState}>
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <IconSymbol
+                ios_icon_name="magnifyingglass"
+                android_material_icon_name="search"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by handle or name..."
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
                   <IconSymbol
-                    ios_icon_name="person.crop.circle.badge.questionmark"
-                    android_material_icon_name="person-add"
-                    size={48}
+                    ios_icon_name="xmark.circle.fill"
+                    android_material_icon_name="cancel"
+                    size={20}
                     color={colors.textSecondary}
                   />
-                  <Text style={styles.emptyStateText}>
-                    {searchQuery || filterBattle !== 'all' || filterPayout !== 'all'
-                      ? 'No creators match your filters'
-                      : `No ${activeStatusTab} creators yet`}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.creatorsList}>
-                  {filteredAndSortedCreators.map((assignedCreator) => {
-                    const currentLevel = getGraduationLevel(assignedCreator.graduation_status);
-                    const diamondsToNext = getDiamondsToNextGraduation(assignedCreator.diamonds_monthly, currentLevel);
-                    const nextTarget = getNextGraduationTarget(currentLevel);
-                    const progressPercentage = getProgressPercentage(assignedCreator.diamonds_monthly, currentLevel);
-
-                    return (
-                      <TouchableOpacity 
-                        key={assignedCreator.id}
-                        style={styles.creatorCard}
-                        onPress={() => handleCreatorCardPress(assignedCreator.id)}
-                        activeOpacity={0.7}
-                      >
-                        {/* Avatar */}
-                        <View style={styles.creatorAvatarContainer}>
-                          {assignedCreator.avatar_url || assignedCreator.profile_picture_url ? (
-                            <Image
-                              source={{ uri: assignedCreator.avatar_url || assignedCreator.profile_picture_url }}
-                              style={styles.creatorAvatar}
-                            />
-                          ) : (
-                            <View style={styles.creatorAvatarPlaceholder}>
-                              <IconSymbol
-                                ios_icon_name="person.fill"
-                                android_material_icon_name="person"
-                                size={20}
-                                color={colors.textSecondary}
-                              />
-                            </View>
-                          )}
-                        </View>
-
-                        {/* Info */}
-                        <View style={styles.creatorInfo}>
-                          <View style={styles.creatorNameRow}>
-                            <Text style={styles.creatorName}>
-                              @{assignedCreator.creator_handle}
-                            </Text>
-                            <View 
-                              style={[
-                                styles.statusPill,
-                                { backgroundColor: getGraduationBadgeColor(assignedCreator.graduation_status) }
-                              ]}
-                            >
-                              <Text style={styles.statusPillText}>
-                                {currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1)}
-                              </Text>
-                            </View>
-                          </View>
-                          
-                          <View style={styles.creatorStatsRow}>
-                            <View style={styles.creatorStat}>
-                              <IconSymbol
-                                ios_icon_name="diamond.fill"
-                                android_material_icon_name="diamond"
-                                size={14}
-                                color={colors.textSecondary}
-                              />
-                              <Text style={styles.creatorStatText}>
-                                {assignedCreator.diamonds_monthly.toLocaleString()}
-                              </Text>
-                            </View>
-                            {currentLevel !== 'gold' && (
-                              <Text style={styles.diamondsToNext}>
-                                {diamondsToNext.toLocaleString()} to {nextTarget}
-                              </Text>
-                            )}
-                          </View>
-
-                          {/* Diamond Progress Bar - Increased Height (Always Visible) */}
-                          {currentLevel !== 'gold' && (
-                            <View style={styles.progressBarContainer}>
-                              <View style={styles.progressBarBg}>
-                                <View 
-                                  style={[
-                                    styles.progressBarFill,
-                                    { 
-                                      width: `${progressPercentage}%`,
-                                      backgroundColor: currentLevel === 'silver' ? '#FFD700' : '#C0C0C0'
-                                    }
-                                  ]}
-                                />
-                              </View>
-                            </View>
-                          )}
-                        </View>
-
-                        {/* Chevron Icon */}
-                        <IconSymbol
-                          ios_icon_name="chevron.right"
-                          android_material_icon_name="chevron-right"
-                          size={24}
-                          color={colors.textSecondary}
-                        />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                </TouchableOpacity>
               )}
             </View>
-          </>
+
+            {/* STATUS TABS - Replace Sorting */}
+            <View style={styles.statusTabsContainer}>
+              <TouchableOpacity
+                style={[styles.statusTab, activeStatusTab === 'rookie' && styles.statusTabActive]}
+                onPress={() => setActiveStatusTab('rookie')}
+              >
+                <Text style={[styles.statusTabText, activeStatusTab === 'rookie' && styles.statusTabTextActive]}>
+                  Rookies
+                </Text>
+                <View style={[styles.statusTabBadge, activeStatusTab === 'rookie' && styles.statusTabBadgeActive]}>
+                  <Text style={[styles.statusTabBadgeText, activeStatusTab === 'rookie' && styles.statusTabBadgeTextActive]}>
+                    {stats.totalRookies}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.statusTab, activeStatusTab === 'silver' && styles.statusTabActive]}
+                onPress={() => setActiveStatusTab('silver')}
+              >
+                <Text style={[styles.statusTabText, activeStatusTab === 'silver' && styles.statusTabTextActive]}>
+                  Silvers
+                </Text>
+                <View style={[styles.statusTabBadge, activeStatusTab === 'silver' && styles.statusTabBadgeActive]}>
+                  <Text style={[styles.statusTabBadgeText, activeStatusTab === 'silver' && styles.statusTabBadgeTextActive]}>
+                    {stats.totalSilver}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.statusTab, activeStatusTab === 'gold' && styles.statusTabActive]}
+                onPress={() => setActiveStatusTab('gold')}
+              >
+                <Text style={[styles.statusTabText, activeStatusTab === 'gold' && styles.statusTabTextActive]}>
+                  Graduated (Gold)
+                </Text>
+                <View style={[styles.statusTabBadge, activeStatusTab === 'gold' && styles.statusTabBadgeActive]}>
+                  <Text style={[styles.statusTabBadgeText, activeStatusTab === 'gold' && styles.statusTabBadgeTextActive]}>
+                    {stats.totalGold}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Additional Filters */}
+            <View style={styles.filtersContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+                {/* Battle Filter */}
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterGroupLabel}>Battle:</Text>
+                  <TouchableOpacity 
+                    style={[styles.filterChip, filterBattle === 'all' && styles.filterChipActive]}
+                    onPress={() => setFilterBattle('all')}
+                  >
+                    <Text style={[styles.filterChipText, filterBattle === 'all' && styles.filterChipTextActive]}>
+                      All
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.filterChip, filterBattle === 'booked' && styles.filterChipActive]}
+                    onPress={() => setFilterBattle('booked')}
+                  >
+                    <Text style={[styles.filterChipText, filterBattle === 'booked' && styles.filterChipTextActive]}>
+                      Booked
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.filterChip, filterBattle === 'missing' && styles.filterChipActive]}
+                    onPress={() => setFilterBattle('missing')}
+                  >
+                    <Text style={[styles.filterChipText, filterBattle === 'missing' && styles.filterChipTextActive]}>
+                      Missing
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Payout Filter */}
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterGroupLabel}>Payout:</Text>
+                  <TouchableOpacity 
+                    style={[styles.filterChip, filterPayout === 'all' && styles.filterChipActive]}
+                    onPress={() => setFilterPayout('all')}
+                  >
+                    <Text style={[styles.filterChipText, filterPayout === 'all' && styles.filterChipTextActive]}>
+                      All
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.filterChip, filterPayout === 'eligible' && styles.filterChipActive]}
+                    onPress={() => setFilterPayout('eligible')}
+                  >
+                    <Text style={[styles.filterChipText, filterPayout === 'eligible' && styles.filterChipTextActive]}>
+                      Eligible
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.filterChip, filterPayout === 'ineligible' && styles.filterChipActive]}
+                    onPress={() => setFilterPayout('ineligible')}
+                  >
+                    <Text style={[styles.filterChipText, filterPayout === 'ineligible' && styles.filterChipTextActive]}>
+                      Ineligible
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.filterChip, filterPayout === 'paid' && styles.filterChipActive]}
+                    onPress={() => setFilterPayout('paid')}
+                  >
+                    <Text style={[styles.filterChipText, filterPayout === 'paid' && styles.filterChipTextActive]}>
+                      Paid
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* Creators List - COMPACT CARDS ONLY */}
+            {filteredAndSortedCreators.length === 0 ? (
+              <View style={styles.emptyState}>
+                <IconSymbol
+                  ios_icon_name="person.crop.circle.badge.questionmark"
+                  android_material_icon_name="person-add"
+                  size={48}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.emptyStateText}>
+                  {searchQuery || filterBattle !== 'all' || filterPayout !== 'all'
+                    ? 'No creators match your filters'
+                    : `No ${activeStatusTab} creators yet`}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.creatorsList}>
+                {filteredAndSortedCreators.map((assignedCreator) => {
+                  const currentLevel = getGraduationLevel(assignedCreator.graduation_status);
+                  const diamondsToNext = getDiamondsToNextGraduation(assignedCreator.diamonds_monthly, currentLevel);
+                  const nextTarget = getNextGraduationTarget(currentLevel);
+                  const progressPercentage = getProgressPercentage(assignedCreator.diamonds_monthly, currentLevel);
+
+                  return (
+                    <TouchableOpacity 
+                      key={assignedCreator.id}
+                      style={styles.creatorCard}
+                      onPress={() => handleCreatorCardPress(assignedCreator.id)}
+                      activeOpacity={0.7}
+                    >
+                      {/* Avatar */}
+                      <View style={styles.creatorAvatarContainer}>
+                        {assignedCreator.avatar_url || assignedCreator.profile_picture_url ? (
+                          <Image
+                            source={{ uri: assignedCreator.avatar_url || assignedCreator.profile_picture_url }}
+                            style={styles.creatorAvatar}
+                          />
+                        ) : (
+                          <View style={styles.creatorAvatarPlaceholder}>
+                            <IconSymbol
+                              ios_icon_name="person.fill"
+                              android_material_icon_name="person"
+                              size={20}
+                              color={colors.textSecondary}
+                            />
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Info */}
+                      <View style={styles.creatorInfo}>
+                        <View style={styles.creatorNameRow}>
+                          <Text style={styles.creatorName}>
+                            @{assignedCreator.creator_handle}
+                          </Text>
+                          <View 
+                            style={[
+                              styles.statusPill,
+                              { backgroundColor: getGraduationBadgeColor(assignedCreator.graduation_status) }
+                            ]}
+                          >
+                            <Text style={styles.statusPillText}>
+                              {currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1)}
+                            </Text>
+                          </View>
+                        </View>
+                        
+                        <View style={styles.creatorStatsRow}>
+                          <View style={styles.creatorStat}>
+                            <IconSymbol
+                              ios_icon_name="diamond.fill"
+                              android_material_icon_name="diamond"
+                              size={14}
+                              color={colors.textSecondary}
+                            />
+                            <Text style={styles.creatorStatText}>
+                              {assignedCreator.diamonds_monthly.toLocaleString()}
+                            </Text>
+                          </View>
+                          {currentLevel !== 'gold' && (
+                            <Text style={styles.diamondsToNext}>
+                              {diamondsToNext.toLocaleString()} to {nextTarget}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Diamond Progress Bar - Increased Height (Always Visible) */}
+                        {currentLevel !== 'gold' && (
+                          <View style={styles.progressBarContainer}>
+                            <View style={styles.progressBarBg}>
+                              <View 
+                                style={[
+                                  styles.progressBarFill,
+                                  { 
+                                    width: `${progressPercentage}%`,
+                                    backgroundColor: currentLevel === 'silver' ? '#FFD700' : '#C0C0C0'
+                                  }
+                                ]}
+                              />
+                            </View>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Chevron Icon */}
+                      <IconSymbol
+                        ios_icon_name="chevron.right"
+                        android_material_icon_name="chevron-right"
+                        size={24}
+                        color={colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
         ) : (
           /* RANKINGS TAB */
           <View style={styles.rankingsCard}>
