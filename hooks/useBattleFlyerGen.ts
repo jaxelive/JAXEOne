@@ -70,7 +70,7 @@ export function useBattleFlyerGen() {
     try {
       console.log('Getting Supabase session...');
       
-      // Try to get the current session
+      // Get the current session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -84,7 +84,7 @@ export function useBattleFlyerGen() {
       }
 
       const accessToken = sessionData.session.access_token;
-      console.log('Session found, access token length:', accessToken?.length);
+      console.log('Session found, access token exists:', !!accessToken);
 
       if (!accessToken) {
         throw new Error('Invalid session. Please log in again.');
@@ -96,21 +96,44 @@ export function useBattleFlyerGen() {
       form.append('creatorName', params.creatorName);
       form.append('opponentName', params.opponentName);
       form.append('battleDate', params.battleDate);
-      form.append('image', {
+      
+      // For React Native, we need to create a proper file object
+      const imageBlob = {
         uri: params.image.uri,
         name: params.image.name ?? 'photo.jpg',
         type: params.image.type ?? 'image/jpeg',
-      } as any);
+      };
+      
+      form.append('image', imageBlob as any);
 
       console.log('Calling edge function via supabase.functions.invoke...');
 
-      // Use supabase.functions.invoke instead of direct fetch
+      // Use supabase.functions.invoke with proper headers
+      // The invoke method should automatically include the Authorization header
       const { data, error } = await supabase.functions.invoke('generate-battle-flyer', {
         body: form,
+        headers: {
+          // Explicitly pass the authorization header
+          'Authorization': `Bearer ${accessToken}`,
+        },
       });
 
       if (error) {
         console.error('Edge function error:', error);
+        
+        // Check for specific error types
+        if (error.message?.includes('GEMINI_API_KEY')) {
+          throw new Error('The AI service is not configured. Please contact support to set up the GEMINI_API_KEY.');
+        }
+        
+        if (error.message?.includes('Unauthorized') || error.message?.includes('401')) {
+          throw new Error('Authentication failed. Please log out and log back in.');
+        }
+        
+        if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+          throw new Error('The AI service is not available. Please contact support.');
+        }
+        
         const errorMessage = error.message || error.details || 'Failed to generate flyer';
         throw new Error(errorMessage);
       }
