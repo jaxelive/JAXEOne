@@ -116,6 +116,7 @@ export default function ManagerPortalScreen() {
   
   // Animation for hero diamonds
   const [diamondsAnim] = useState(new Animated.Value(0));
+  const [displayDiamonds, setDisplayDiamonds] = useState(0);
 
   const fetchManagerPortalData = useCallback(async () => {
     try {
@@ -241,14 +242,21 @@ export default function ManagerPortalScreen() {
           creatorsMissingBattle,
         });
 
-        // Animate hero diamonds
+        // Animate hero diamonds with listener
         diamondsAnim.setValue(0);
+        const listener = diamondsAnim.addListener(({ value }) => {
+          setDisplayDiamonds(Math.floor(value));
+        });
+
         Animated.timing(diamondsAnim, {
           toValue: collectiveDiamonds,
           duration: 1100,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
-        }).start();
+        }).start(() => {
+          diamondsAnim.removeListener(listener);
+          setDisplayDiamonds(collectiveDiamonds);
+        });
 
         console.log('[ManagerPortal] ✅ Stats calculated:', {
           totalCreators,
@@ -528,12 +536,9 @@ export default function ManagerPortalScreen() {
                 color="#06B6D4"
               />
             </View>
-            <Animated.Text style={styles.heroValue}>
-              {diamondsAnim.interpolate({
-                inputRange: [0, stats.collectiveDiamonds],
-                outputRange: ['0', stats.collectiveDiamonds.toLocaleString()],
-              })}
-            </Animated.Text>
+            <Text style={styles.heroValue}>
+              {displayDiamonds.toLocaleString()}
+            </Text>
             <Text style={styles.heroLabel}>This Month (Sum of Active Creators)</Text>
           </View>
 
