@@ -68,9 +68,9 @@ export function useBattleFlyerGen() {
     setState({ status: 'loading', data: null, error: null });
 
     try {
-      console.log('Getting Supabase session...');
+      console.log('Getting current session...');
       
-      // Get the current session to verify user is authenticated
+      // Get the current session - this will also refresh the token if needed
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -102,11 +102,16 @@ export function useBattleFlyerGen() {
       
       form.append('image', imageBlob as any);
 
-      console.log('Calling edge function via supabase.functions.invoke...');
+      console.log('Calling edge function...');
 
-      // Use supabase.functions.invoke - it automatically includes the auth token from the current session
+      // Use supabase.functions.invoke with explicit headers
+      // The Supabase client will automatically include the Authorization header with the JWT
       const { data, error } = await supabase.functions.invoke('generate-battle-flyer', {
         body: form,
+        headers: {
+          // The Authorization header is automatically added by the Supabase client
+          // We just need to ensure the session is valid
+        },
       });
 
       if (error) {
