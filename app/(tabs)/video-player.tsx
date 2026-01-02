@@ -41,10 +41,42 @@ export default function VideoPlayerScreen() {
   const [isCompleted, setIsCompleted] = useState(false);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedProgressRef = useRef<number>(0);
+  const hasMarkedWatchedRef = useRef(false);
 
   const player = useVideoPlayer(videoData?.video_url || '', (player) => {
     player.play();
   });
+
+  const markVideoAsWatched = useCallback(async () => {
+    if (!videoId || hasMarkedWatchedRef.current) return;
+
+    try {
+      console.log('[VideoPlayer] Marking video as watched:', videoId);
+      hasMarkedWatchedRef.current = true;
+
+      const { error } = await supabase
+        .from('user_video_progress')
+        .upsert({
+          creator_handle: CREATOR_HANDLE,
+          video_id: videoId,
+          watched_seconds: 0,
+          completed: true,
+          completed_at: new Date().toISOString(),
+          last_watched_at: new Date().toISOString(),
+        }, {
+          onConflict: 'creator_handle,video_id',
+        });
+
+      if (error) {
+        console.error('[VideoPlayer] Error marking video as watched:', error);
+      } else {
+        console.log('[VideoPlayer] Video marked as watched successfully');
+        setIsCompleted(true);
+      }
+    } catch (error: any) {
+      console.error('[VideoPlayer] Exception marking video as watched:', error);
+    }
+  }, [videoId]);
 
   const fetchVideoData = useCallback(async () => {
     if (!videoId) return;
@@ -63,27 +95,7 @@ export default function VideoPlayerScreen() {
       setVideoData(video);
 
       // Mark video as watched immediately when opened
-      console.log('[VideoPlayer] Marking video as watched:', videoId);
-      const { error: markError } = await supabase
-        .from('user_video_progress')
-        .upsert({
-          creator_handle: CREATOR_HANDLE,
-          video_id: videoId,
-          watched_seconds: 0,
-          completed: true,
-          completed_at: new Date().toISOString(),
-          last_watched_at: new Date().toISOString(),
-        }, {
-          onConflict: 'creator_handle,video_id',
-        });
-
-      if (markError) {
-        console.error('[VideoPlayer] Error marking video as watched:', markError);
-      } else {
-        console.log('[VideoPlayer] Video marked as watched successfully');
-        setIsCompleted(true);
-        setProgressPercentage(100);
-      }
+      await markVideoAsWatched();
 
       // Fetch existing progress using creator_handle
       const { data: progress, error: progressError } = await supabase
@@ -109,7 +121,7 @@ export default function VideoPlayerScreen() {
     } finally {
       setLoading(false);
     }
-  }, [videoId]);
+  }, [videoId, markVideoAsWatched]);
 
   const updateProgress = useCallback(async (currentTime: number, forceUpdate: boolean = false) => {
     if (!videoId || !videoData) return;
@@ -128,6 +140,7 @@ export default function VideoPlayerScreen() {
           creator_handle: CREATOR_HANDLE,
           video_id: videoId,
           watched_seconds: Math.floor(currentTime),
+          completed: true,
           last_watched_at: new Date().toISOString(),
         }, {
           onConflict: 'creator_handle,video_id',

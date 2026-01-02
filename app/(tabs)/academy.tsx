@@ -308,11 +308,12 @@ export default function AcademyScreen() {
         .eq('creator_handle', CREATOR_HANDLE)
         .order('created_at', { ascending: false });
 
-      if (quizError) {
+      if (quizError && quizError.code !== 'PGRST116') {
         console.error('[Academy] Error fetching quiz attempts:', quizError);
-      } else {
-        console.log('[Academy] Quiz attempts fetched:', quizData?.length || 0);
+        return;
       }
+
+      console.log('[Academy] Quiz attempts fetched:', quizData?.length || 0);
 
       // Get the latest attempt for each quiz
       const latestAttempts: QuizAttempt[] = [];
@@ -508,9 +509,13 @@ export default function AcademyScreen() {
   };
 
   const getCourseProgress = (course: Course) => {
-    const completedItems = course.contentItems.filter(item => isItemCompleted(item)).length;
-    const totalItems = course.contentItems.length;
-    return { completed: completedItems, total: totalItems };
+    const videoItems = course.contentItems.filter(item => item.content_type === 'video');
+    const watchedVideos = videoItems.filter(item => {
+      const progress = videoProgress.find(p => p.video_id === item.video!.id);
+      return progress?.completed || false;
+    }).length;
+    const totalVideos = videoItems.length;
+    return { completed: watchedVideos, total: totalVideos };
   };
 
   const getVideoNumber = (course: Course, item: ContentItem): number => {
@@ -566,7 +571,7 @@ export default function AcademyScreen() {
           />
           <Text style={styles.errorTitle}>Unable to Load Content</Text>
           <Text style={styles.errorText}>
-            We couldn't load the academy content. Please check your connection and try again.
+            We couldn&apos;t load the academy content. Please check your connection and try again.
           </Text>
           <TouchableOpacity 
             style={styles.retryButton} 
@@ -759,7 +764,7 @@ export default function AcademyScreen() {
                     <View style={styles.courseHeaderText}>
                       <Text style={styles.courseTitle}>{course.title}</Text>
                       <Text style={styles.courseProgress}>
-                        {progress.completed} / {progress.total} completed
+                        {progress.completed} / {progress.total}
                       </Text>
                     </View>
                     
@@ -938,9 +943,22 @@ export default function AcademyScreen() {
                                 )}
                                 
                                 {item.content_type === 'video' && item.video?.duration_seconds && (
-                                  <Text style={styles.videoDuration}>
-                                    {Math.floor(item.video.duration_seconds / 60)} min
-                                  </Text>
+                                  <View style={styles.videoMetaRow}>
+                                    <Text style={styles.videoDuration}>
+                                      {Math.floor(item.video.duration_seconds / 60)} min
+                                    </Text>
+                                    {isCompleted && (
+                                      <View style={styles.watchedBadge}>
+                                        <IconSymbol
+                                          ios_icon_name="checkmark.circle.fill"
+                                          android_material_icon_name="check-circle"
+                                          size={14}
+                                          color={colors.primary}
+                                        />
+                                        <Text style={styles.watchedBadgeText}>Watched</Text>
+                                      </View>
+                                    )}
+                                  </View>
                                 )}
                                 
                                 {item.content_type === 'quiz' && item.quiz?.description && (
@@ -1448,9 +1466,28 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 4,
   },
+  videoMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   videoDuration: {
     fontSize: 12,
     fontFamily: 'Poppins_500Medium',
+    color: colors.primary,
+  },
+  watchedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(102, 66, 239, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  watchedBadgeText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
     color: colors.primary,
   },
   contentArrow: {
