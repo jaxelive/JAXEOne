@@ -352,19 +352,19 @@ export default function HomeScreen() {
     if (!creator) return;
 
     try {
-      // Fetch top 3 creators by diamonds_monthly (current month performance) with region
+      // Fetch top 5 creators by diamonds_monthly (current month performance) with region
       const { data: topCreatorsData, error: topCreatorsError } = await supabase
         .from('creators')
         .select('creator_handle, diamonds_monthly, total_diamonds, avatar_url, profile_picture_url, region')
         .eq('is_active', true)
         .order('diamonds_monthly', { ascending: false })
         .order('total_diamonds', { ascending: false })
-        .limit(3);
+        .limit(5);
 
       if (topCreatorsError) {
         console.error('[HomeScreen] Error fetching top creators:', topCreatorsError);
       } else {
-        console.log('[HomeScreen] Top 3 creators loaded:', topCreatorsData);
+        console.log('[HomeScreen] Top 5 creators loaded:', topCreatorsData);
         setTopCreators(topCreatorsData || []);
       }
 
@@ -1006,7 +1006,7 @@ export default function HomeScreen() {
                 </ImportantCardPressable>
               )}
 
-              {/* ACADEMY CARD - WITH VISUAL EMPHASIS - REPOSITIONED ABOVE TOP 3 */}
+              {/* ACADEMY CARD - WITH VISUAL EMPHASIS - REPOSITIONED ABOVE TOP 5 */}
               {showAcademy && (
                 <ImportantCardPressable onPress={() => router.push('/(tabs)/academy')}>
                   <View style={[styles.darkCard, styles.importantCard]}>
@@ -1087,9 +1087,9 @@ export default function HomeScreen() {
                 </ImportantCardPressable>
               )}
 
-              {/* TOP 3 IN THE NETWORK */}
+              {/* TOP 5 IN THE NETWORK */}
               <View style={styles.darkCard}>
-                <Text style={styles.cardTitle}>Top 3 in the Network</Text>
+                <Text style={styles.cardTitle}>Top 5 in the Network</Text>
                 <Text style={styles.topCreatorsSubtitle}>Leading creators by monthly diamonds</Text>
                 
                 {topCreators.length > 0 ? (
@@ -1807,7 +1807,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // TOP 3 IN THE NETWORK
+  // TOP 5 IN THE NETWORK
   topCreatorsSubtitle: {
     fontSize: 14,
     fontFamily: 'Poppins_500Medium',
