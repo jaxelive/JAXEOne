@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "JAXE Creator Home",
-    "slug": "JAXE Creator Home",
+    "name": "JAXEOne",
+    "slug": "JAXEOne",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -44,5 +44,5 @@
       "router": {}
     }
   },
-  "scheme": "JAXE Creator Home"
+  "scheme": "JAXEOne"
 }
