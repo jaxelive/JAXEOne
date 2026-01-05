@@ -1,6 +1,5 @@
+# JAXEOne
 
-# JAXE Creator App
+This app was built using [Natively.dev](https://natively.dev) - a platform for creating mobile apps.
 
-A React Native + Expo 54 mobile application for TikTok LIVE creators.
-
-<!-- Comment: This app includes Academy video progress tracking, quiz system with retake functionality, and comprehensive creator management features -->
+Made with 💙 for creativity.

@@ -110,18 +110,8 @@ export default function AcademyScreen() {
   const [error, setError] = useState<string | null>(null);
   const [registeringEventId, setRegisteringEventId] = useState<string | null>(null);
 
-  // Get all course videos for progress calculation
-  const allCourseVideos = courses.flatMap(course =>
-    course.contentItems
-      .filter(item => item.content_type === 'video' && item.video)
-      .map(item => ({
-        id: item.video!.id,
-        duration_seconds: item.video!.duration_seconds,
-      }))
-  );
-
   // Use the video progress hook
-  const { videoProgress, refetch: refetchVideoProgress, isVideoWatched } = useVideoProgress(allCourseVideos);
+  const { videoProgress, refetch: refetchVideoProgress, isVideoWatched } = useVideoProgress(CREATOR_HANDLE);
 
   useEffect(() => {
     console.log('[Academy] Component mounted for creator:', CREATOR_HANDLE);
@@ -152,9 +142,6 @@ export default function AcademyScreen() {
         console.error('[Academy] Error fetching events:', eventsError);
       } else {
         console.log('[Academy] Live events found:', eventsData?.length || 0);
-        eventsData?.forEach((event) => {
-          console.log(`[Academy] Event: ${event.event_name} - Date: ${event.event_date} - Hour: ${event.event_hour} - Time Zone: ${event.time_zone}`);
-        });
         setLiveEvents(eventsData || []);
       }
 
@@ -223,7 +210,7 @@ export default function AcademyScreen() {
         
         // For each course, fetch its content items
         for (const course of coursesData || []) {
-          console.log(`[Academy] Course: ${course.title} - Cover Image: ${course.cover_image_url || 'None'}`);
+          console.log(`[Academy] Course: ${course.title}`);
           
           const { data: contentData, error: contentError } = await supabase
             .from('course_content_items')
@@ -419,20 +406,9 @@ export default function AcademyScreen() {
         );
         return;
       }
-
-      // Check if quiz is already passed
-      const quizAttempt = quizAttempts.find(a => a.quiz_id === item.quiz!.id);
-      if (quizAttempt?.passed) {
-        Alert.alert(
-          'Quiz Completed',
-          'You have already passed this quiz. Retaking is not allowed.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
       
       try {
-        // Navigate to quiz screen
+        // Navigate to quiz screen - quizzes can always be retaken
         router.push({
           pathname: '/(tabs)/quiz',
           params: { 
@@ -921,12 +897,7 @@ export default function AcademyScreen() {
                                     ]}>
                                       {quizAttempt.passed ? '✓ PASSED' : '✗ FAILED'} - {quizAttempt.score}%
                                     </Text>
-                                    {!quizAttempt.passed && (
-                                      <Text style={styles.quizRetryText}>Tap to retry</Text>
-                                    )}
-                                    {quizAttempt.passed && (
-                                      <Text style={styles.quizLockedText}>Retake not allowed</Text>
-                                    )}
+                                    <Text style={styles.quizRetryText}>Tap to retake</Text>
                                   </View>
                                 )}
                               </View>
@@ -959,7 +930,7 @@ export default function AcademyScreen() {
             color={colors.primary}
           />
           <Text style={styles.infoText}>
-            Complete all videos and pass the final quiz (70% required) in the Creator Journey course to become a certified JAXE creator. The quiz can be retaken as many times as needed.
+            Videos are marked as watched when you open them. Complete all videos and pass the final quiz (70% required) in the Creator Journey course to become a certified JAXE creator. Quizzes can be retaken as many times as needed.
           </Text>
         </View>
       </ScrollView>

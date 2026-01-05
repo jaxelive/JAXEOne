@@ -120,6 +120,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
   const fetchQuizData = async () => {
     try {
+      console.log('[QuizComponent] Fetching quiz data for:', quizId);
       setLoading(true);
 
       // Fetch quiz details
@@ -129,7 +130,12 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         .eq('id', quizId)
         .single();
 
-      if (quizError) throw quizError;
+      if (quizError) {
+        console.error('[QuizComponent] Error fetching quiz:', quizError);
+        throw quizError;
+      }
+
+      console.log('[QuizComponent] Quiz fetched:', quiz.title);
 
       // Fetch questions
       const { data: questions, error: questionsError } = await supabase
@@ -138,7 +144,12 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         .eq('quiz_id', quizId)
         .order('order_index', { ascending: true });
 
-      if (questionsError) throw questionsError;
+      if (questionsError) {
+        console.error('[QuizComponent] Error fetching questions:', questionsError);
+        throw questionsError;
+      }
+
+      console.log('[QuizComponent] Questions fetched:', questions.length);
 
       // Fetch answers for all questions
       const questionIds = questions.map((q) => q.id);
@@ -148,7 +159,12 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         .in('question_id', questionIds)
         .order('order_index', { ascending: true });
 
-      if (answersError) throw answersError;
+      if (answersError) {
+        console.error('[QuizComponent] Error fetching answers:', answersError);
+        throw answersError;
+      }
+
+      console.log('[QuizComponent] Answers fetched:', answers.length);
 
       // Group answers by question
       const questionsWithAnswers = questions.map((question) => ({
@@ -161,7 +177,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         questions: questionsWithAnswers,
       });
     } catch (error) {
-      console.error('Error fetching quiz data:', error);
+      console.error('[QuizComponent] Error in fetchQuizData:', error);
       Alert.alert('Error', 'Failed to load quiz. Please try again.');
     } finally {
       setLoading(false);
@@ -204,6 +220,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const handleSubmit = async () => {
     if (!quizData) return;
 
+    console.log('[QuizComponent] Submitting quiz');
     setAnalyzing(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -220,12 +237,15 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     const calculatedScore = Math.round((correct / quizData.total_questions) * 100);
     const passed = calculatedScore >= quizData.passing_score;
 
+    console.log('[QuizComponent] Score:', calculatedScore, '- Passed:', passed);
+
     setCorrectAnswers(correct);
     setScore(calculatedScore);
 
-    // Save quiz attempt
+    // Save quiz attempt to user_quiz_attempts table
     try {
-      const { error } = await supabase.from('quiz_attempts').insert({
+      console.log('[QuizComponent] Saving quiz attempt');
+      const { error } = await supabase.from('user_quiz_attempts').insert({
         quiz_id: quizId,
         creator_handle: creatorHandle,
         score: calculatedScore,
@@ -233,9 +253,14 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         answers: selectedAnswers,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[QuizComponent] Error saving quiz attempt:', error);
+        throw error;
+      }
+      
+      console.log('[QuizComponent] Quiz attempt saved successfully');
     } catch (error) {
-      console.error('Error saving quiz attempt:', error);
+      console.error('[QuizComponent] Exception saving quiz attempt:', error);
     }
 
     setTimeout(() => {
@@ -246,6 +271,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   };
 
   const handleRetry = () => {
+    console.log('[QuizComponent] Retrying quiz');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
@@ -353,7 +379,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
           <View style={styles.resultsButtonContainer}>
             <TouchableOpacity
-              style={[styles.retakeButton, passed && styles.retakeButtonSuccess]}
+              style={[styles.retakeButton]}
               onPress={handleRetry}
             >
               <IconSymbol
@@ -792,9 +818,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 12,
     gap: 8,
-  },
-  retakeButtonSuccess: {
-    backgroundColor: colors.secondary,
   },
   retakeButtonText: {
     color: '#fff',

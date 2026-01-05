@@ -6,6 +6,7 @@ interface VideoProgress {
   video_id: string;
   completed: boolean;
   creator_handle: string;
+  watched_seconds: number;
 }
 
 export const useVideoProgress = (creatorHandle: string) => {
@@ -14,22 +15,32 @@ export const useVideoProgress = (creatorHandle: string) => {
   const isMountedRef = useRef(true);
 
   const fetchVideoProgress = useCallback(async () => {
-    if (!creatorHandle) return;
+    if (!creatorHandle) {
+      console.log('[useVideoProgress] No creator handle provided');
+      setLoading(false);
+      return;
+    }
     
     try {
+      console.log('[useVideoProgress] Fetching progress for:', creatorHandle);
       const { data, error } = await supabase
         .from('user_video_progress')
         .select('*')
         .eq('creator_handle', creatorHandle);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useVideoProgress] Error fetching progress:', error);
+        throw error;
+      }
+      
+      console.log('[useVideoProgress] Fetched', data?.length || 0, 'progress records');
       
       if (isMountedRef.current) {
         setVideoProgress(data || []);
         setLoading(false);
       }
     } catch (error) {
-      console.error('Error fetching video progress:', error);
+      console.error('[useVideoProgress] Exception:', error);
       if (isMountedRef.current) {
         setLoading(false);
       }
@@ -46,7 +57,8 @@ export const useVideoProgress = (creatorHandle: string) => {
   }, [fetchVideoProgress]);
 
   const isVideoWatched = useCallback((videoId: string): boolean => {
-    return videoProgress.some(vp => vp.video_id === videoId && vp.completed);
+    const watched = videoProgress.some(vp => vp.video_id === videoId && vp.completed);
+    return watched;
   }, [videoProgress]);
 
   const getCourseProgress = useCallback((courseId: string, videos: any[]): { watched: number; total: number } => {
@@ -56,20 +68,33 @@ export const useVideoProgress = (creatorHandle: string) => {
   }, [isVideoWatched]);
 
   const markVideoAsWatched = useCallback(async (videoId: string) => {
-    if (!creatorHandle) return;
+    if (!creatorHandle) {
+      console.error('[useVideoProgress] Cannot mark video as watched: no creator handle');
+      return;
+    }
 
     try {
+      console.log('[useVideoProgress] Marking video as watched:', videoId);
+      
       const { error } = await supabase
         .from('user_video_progress')
         .upsert({
           creator_handle: creatorHandle,
           video_id: videoId,
           completed: true,
+          watched_seconds: 0,
+          completed_at: new Date().toISOString(),
+          last_watched_at: new Date().toISOString(),
         }, {
           onConflict: 'creator_handle,video_id'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useVideoProgress] Error marking video as watched:', error);
+        throw error;
+      }
+
+      console.log('[useVideoProgress] Video marked as watched successfully');
 
       // Update local state immediately
       setVideoProgress(prev => {
@@ -79,14 +104,20 @@ export const useVideoProgress = (creatorHandle: string) => {
             vp.video_id === videoId ? { ...vp, completed: true } : vp
           );
         }
-        return [...prev, { video_id: videoId, completed: true, creator_handle: creatorHandle }];
+        return [...prev, { 
+          video_id: videoId, 
+          completed: true, 
+          creator_handle: creatorHandle,
+          watched_seconds: 0,
+        }];
       });
     } catch (error) {
-      console.error('Error marking video as watched:', error);
+      console.error('[useVideoProgress] Exception marking video as watched:', error);
     }
   }, [creatorHandle]);
 
   const refetch = useCallback(() => {
+    console.log('[useVideoProgress] Manual refetch triggered');
     return fetchVideoProgress();
   }, [fetchVideoProgress]);
 
